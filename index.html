@@ -1,0 +1,1552 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="robots" content="noindex, nofollow">
+    <meta name="description" content="Eine Lernreise zum Umgang mit generativer KI.">
+    <title>Mit KI verantwortlich arbeiten — Lernreise</title>
+    <style>
+        /* ============================================================
+           UNIVERSAL RESET
+           ============================================================ */
+        *,
+        *::before,
+        *::after {
+            box-sizing: border-box;
+        }
+
+        /* ============================================================
+           DESIGN-TOKENS — :ROOT
+           ============================================================ */
+        :root {
+            /* Farben */
+            --color-bg-deep: #162A45;
+            --color-bg-mid: #163559;
+            --color-bg-light: #1F3D63;
+            --color-text-primary: #F4F6FA;
+            --color-text-secondary: #C8D3E8;
+            --color-text-muted: #8A9AB8;
+            --color-accent-yellow: #E8E226;
+            --color-accent-cyan: #66C3E6;
+            --color-accent-green: #7CC97A;
+            --color-divider: #1F3D63;
+
+            /* Schriften */
+            --font-stack-sans: -apple-system, BlinkMacSystemFont, "Segoe UI",
+                               Roboto, "Helvetica Neue", Arial, sans-serif;
+
+            /* Layout */
+            --max-content-width: 1100px;
+            --spacing-section: 80px;
+            --spacing-block: 40px;
+        }
+
+        /* ============================================================
+           BODY-DEFAULTS
+           ============================================================ */
+        html,
+        body {
+            margin: 0;
+            padding: 0;
+        }
+
+        body {
+            background-color: var(--color-bg-deep);
+            font-family: var(--font-stack-sans);
+            color: var(--color-text-primary);
+            line-height: 1.6;
+        }
+
+        /* ============================================================
+           TASTATUR-FOKUS
+           Vorbereitet für interaktive Elemente in späteren Iterationen.
+           ============================================================ */
+        :focus-visible {
+            outline: 2px solid var(--color-accent-yellow);
+            outline-offset: 2px;
+        }
+
+        /* ============================================================
+           BEREICHS-CONTAINER
+           Hilfsklasse für zentrierte, breitenbegrenzte Inhalte.
+           ============================================================ */
+        .section-inner {
+            max-width: var(--max-content-width);
+            margin: 0 auto;
+            padding: 0 24px;
+        }
+
+        /* ============================================================
+           PLATZHALTER-SCHRIFTZUG
+           ============================================================ */
+        .placeholder {
+            font-size: 14px;
+            font-weight: 400;
+            color: var(--color-text-muted);
+            letter-spacing: 0.1em;
+            text-align: center;
+            text-transform: uppercase;
+            margin: 0;
+        }
+
+        /* ============================================================
+           BEREICH 1 — HEADER
+           Layered: Bild (z0) → Verlaufs-Overlay (z1) → Inhalt (z2).
+           Inhalt sitzt im unteren Drittel via flex flex-end +
+           padding-bottom, das Platz für den Scroll-Indikator lässt.
+           ============================================================ */
+        .section-1 {
+            background-color: var(--color-bg-deep);
+            min-height: 80vh;
+            position: relative;
+            overflow: hidden;
+            display: flex;
+            flex-direction: column;
+            justify-content: flex-end;
+            padding-bottom: 120px;
+        }
+
+        .header-image {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+            z-index: 0;
+        }
+
+        .header-overlay {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(
+                to bottom,
+                rgba(22, 42, 69, 0.0) 0%,
+                rgba(22, 42, 69, 0.85) 100%
+            );
+            z-index: 1;
+            pointer-events: none;
+        }
+
+        .header-content {
+            position: relative;
+            z-index: 2;
+        }
+
+        .header-headline {
+            font-size: 48px;
+            font-weight: 700;
+            color: var(--color-text-primary);
+            line-height: 1.1;
+            margin: 0;
+        }
+
+        .header-subheadline {
+            font-size: 18px;
+            font-weight: 400;
+            color: var(--color-accent-yellow);
+            line-height: 1.4;
+            margin: 8px 0 0 0;
+        }
+
+        .scroll-indicator {
+            position: absolute;
+            bottom: 40px;
+            left: 50%;
+            transform: translateX(-50%);
+            z-index: 2;
+            color: var(--color-text-secondary);
+            line-height: 0;
+            animation: scroll-pulse 2s ease-in-out infinite;
+        }
+
+        @keyframes scroll-pulse {
+            0%, 100% { opacity: 0.5; }
+            50%      { opacity: 1.0; }
+        }
+
+        /* ============================================================
+           BEREICH 2 — SINNSATZ
+           ============================================================ */
+        .section-2 {
+            background-color: var(--color-bg-deep);
+            padding-top: 80px;
+            padding-bottom: 80px;
+        }
+
+        .sinnsatz {
+            font-size: 22px;
+            font-weight: 400;
+            color: var(--color-text-primary);
+            line-height: 1.5;
+            text-align: center;
+            max-width: 800px;
+            margin-inline: auto;
+            margin-top: 0;
+            margin-bottom: 0;
+        }
+
+        /* ============================================================
+           BEREICH 3 — VIER-BLOCK-ÜBERSICHT
+           Vier Info-Blöcke in einem responsiven Grid:
+           4 Spalten ≥900px → 2 Spalten 600–899px → 1 Spalte <600px.
+           ============================================================ */
+        .section-3 {
+            background-color: var(--color-bg-mid);
+            padding-top: 80px;
+            padding-bottom: 80px;
+        }
+
+        .info-grid {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 30px;
+        }
+
+        .info-block {
+            display: flex;
+            flex-direction: column;
+        }
+
+        .info-block-icon {
+            display: block;
+            width: 40px;
+            height: 40px;
+            color: var(--color-text-secondary);
+        }
+
+        .info-block-heading {
+            font-size: 16px;
+            font-weight: 600;
+            color: var(--color-accent-yellow);
+            line-height: 1.3;
+            /* Mindesthöhe = zwei Zeilen, damit Erklärtexte aller
+               Blöcke unabhängig von der Überschriftenlänge auf
+               einer gemeinsamen Linie beginnen. */
+            min-height: calc(16px * 1.3 * 2);
+            margin: 16px 0 0 0;
+        }
+
+        .info-block-text {
+            font-size: 14px;
+            font-weight: 400;
+            color: var(--color-text-primary);
+            line-height: 1.6;
+            margin: 12px 0 0 0;
+        }
+
+        /* ============================================================
+           BEREICH 4 — ÜBERGANG ZUR LERNREISE
+           Label oben, Fortschritts-Indikator (5 Kreise + Verbindungslinien)
+           in der Mitte, Statustext unten. Klassen .is-active und
+           .is-completed sind für spätere JavaScript-Iterationen
+           vorbereitet — aktuell ist nur der erste Kreis aktiv.
+           ============================================================ */
+        .section-4 {
+            background-color: var(--color-bg-deep);
+            padding-top: 60px;
+            padding-bottom: 60px;
+        }
+
+        .transition-label {
+            font-size: 14px;
+            font-weight: 600;
+            color: var(--color-accent-yellow);
+            letter-spacing: 0.1em;
+            text-align: center;
+            text-transform: uppercase;
+            margin: 0;
+        }
+
+        .progress-indicator {
+            list-style: none;
+            padding: 0;
+            margin: 24px 0 0 0;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            gap: 60px;
+        }
+
+        .progress-step {
+            position: relative;
+            width: 14px;
+            height: 14px;
+            border-radius: 50%;
+            background-color: var(--color-bg-light);
+            border: 1px solid var(--color-divider);
+            flex-shrink: 0;
+        }
+
+        .progress-step:not(:last-child)::after {
+            content: "";
+            position: absolute;
+            top: 50%;
+            left: 100%;
+            width: 60px;
+            height: 2px;
+            background-color: var(--color-divider);
+            transform: translateY(-50%);
+        }
+
+        .progress-step.is-active {
+            background-color: var(--color-accent-yellow);
+            border-color: var(--color-accent-yellow);
+        }
+
+        /* is-completed: in dieser Iteration nicht angewendet — nur vorbereitet */
+        .progress-step.is-completed {
+            background-color: var(--color-accent-green);
+            border-color: var(--color-accent-green);
+            background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 12 12' fill='none' stroke='white' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'><polyline points='2,6 5,9 10,3'/></svg>");
+            background-repeat: no-repeat;
+            background-position: center;
+            background-size: 60% 60%;
+        }
+
+        .progress-step.is-completed::after {
+            background-color: var(--color-accent-green);
+        }
+
+        .progress-status {
+            font-size: 12px;
+            font-weight: 400;
+            color: var(--color-text-muted);
+            text-align: center;
+            margin: 16px 0 0 0;
+        }
+
+        /* ============================================================
+           BEREICH 5 — LERNREISE (DREI MODULE)
+           Modul-Basisklasse + Vorbereitung für mehrere Module:
+           der ".module + .module"-Selektor setzt 100px Abstand
+           zwischen geschwisternden Modulen — wirkt erst, wenn
+           Modul 2 / Modul 3 in späteren Iterationen ergänzt werden.
+           ============================================================ */
+        .section-5 {
+            background-color: var(--color-bg-deep);
+            padding-top: 80px;
+            padding-bottom: 80px;
+        }
+
+        .module + .module {
+            margin-top: 100px;
+        }
+
+        .module-indicator {
+            font-size: 12px;
+            font-weight: 600;
+            color: var(--color-accent-yellow);
+            letter-spacing: 0.15em;
+            text-transform: uppercase;
+            margin: 0;
+        }
+
+        .module-title {
+            font-size: 28px;
+            font-weight: 600;
+            color: var(--color-text-primary);
+            line-height: 1.2;
+            margin: 8px 0 0 0;
+        }
+
+        .module-intro {
+            font-size: 16px;
+            font-weight: 400;
+            color: var(--color-text-secondary);
+            line-height: 1.6;
+            max-width: 700px;
+            margin: 16px 0 0 0;
+        }
+
+        .module-video {
+            display: block;
+            width: 100%;
+            max-width: 800px;
+            aspect-ratio: 16 / 9;
+            border-radius: 4px;
+            box-shadow: 0 4px 24px rgba(0, 0, 0, 0.3);
+            margin: 40px auto 0 auto;
+            background-color: #000;
+        }
+
+        .module-duration {
+            font-size: 12px;
+            font-weight: 400;
+            color: var(--color-text-muted);
+            text-align: right;
+            max-width: 800px;
+            margin: 8px auto 0 auto;
+        }
+
+        /* ------------------------------------------------------------
+           Inhaltliche Klammer zwischen Modulen.
+           Kein .module-Element — dadurch greift der
+           ".module + .module"-Abstand nicht über die Klammer hinweg.
+           ------------------------------------------------------------ */
+        .module-bridge {
+            margin: 80px 0;
+            padding: 40px 24px;
+            background-color: var(--color-bg-mid);
+            border-radius: 4px;
+        }
+
+        .module-bridge-text {
+            font-size: 16px;
+            font-weight: 400;
+            font-style: italic;
+            color: var(--color-text-primary);
+            line-height: 1.6;
+            text-align: center;
+            max-width: 700px;
+            margin: 0 auto;
+        }
+
+        /* ------------------------------------------------------------
+           Modul 2 — drei Hotspot-Vorschau-Karten in Grid-Anordnung.
+           Modul-Indikator/-Titel/-Intro nutzen die Basisklassen
+           weiter — kein Duplikat-CSS nötig.
+           ------------------------------------------------------------ */
+        .hotspot-grid {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 24px;
+            margin-top: 40px;
+        }
+
+        .hotspot-card {
+            display: block;
+            text-decoration: none;
+            color: inherit;
+            cursor: pointer;
+            transition: transform 0.2s ease, box-shadow 0.2s ease;
+        }
+
+        .hotspot-card:hover {
+            transform: scale(1.02);
+            box-shadow: 0 8px 24px rgba(0, 0, 0, 0.4);
+        }
+
+        .hotspot-card-image {
+            display: block;
+            width: 100%;
+            aspect-ratio: 16 / 9;
+            object-fit: cover;
+            border-radius: 4px;
+            box-shadow: 0 4px 16px rgba(0, 0, 0, 0.3);
+            background-color: #000;
+        }
+
+        .hotspot-card-title {
+            font-size: 16px;
+            font-weight: 600;
+            color: var(--color-text-primary);
+            line-height: 1.3;
+            text-align: left;
+            margin: 12px 0 0 0;
+        }
+
+        /* ------------------------------------------------------------
+           Modul 3 — Reflexionskarte.
+           Zweispaltiges Grid: links 600px hohes A4-Vorschaubild,
+           rechts Beschreibung + zwei Buttons. align-items: start
+           verankert die rechte Spalte am oberen Bildrand statt
+           sie vertikal zu zentrieren.
+           ------------------------------------------------------------ */
+        .reflexionskarte-layout {
+            display: grid;
+            grid-template-columns: auto 1fr;
+            gap: 60px;
+            align-items: start;
+            margin-top: 40px;
+        }
+
+        .reflexionskarte-image {
+            display: block;
+            height: 600px;
+            width: auto;
+            aspect-ratio: 1 / 1.414;
+            object-fit: contain;
+            border-radius: 4px;
+            box-shadow: 0 4px 24px rgba(0, 0, 0, 0.4);
+            background-color: #000;
+        }
+
+        .reflexionskarte-actions {
+            display: flex;
+            flex-direction: column;
+            gap: 24px;
+            max-width: 400px;
+        }
+
+        .reflexionskarte-description {
+            font-size: 14px;
+            font-weight: 400;
+            color: var(--color-text-secondary);
+            line-height: 1.6;
+            margin: 0;
+        }
+
+        .reflexionskarte-buttons {
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+            margin: 0;
+        }
+
+        /* ------------------------------------------------------------
+           Button-Basis + zwei Varianten — generisch für die ganze
+           Seite, nicht nur für die Reflexionskarte gedacht.
+           ------------------------------------------------------------ */
+        .button {
+            display: inline-block;
+            text-align: center;
+            padding: 12px 24px;
+            font-size: 14px;
+            font-weight: 600;
+            border-radius: 4px;
+            text-decoration: none;
+            cursor: pointer;
+            transition: filter 0.2s ease, border-color 0.2s ease, background-color 0.2s ease;
+        }
+
+        .button-primary {
+            background-color: var(--color-accent-yellow);
+            color: var(--color-bg-deep);
+            border: 1px solid var(--color-accent-yellow);
+        }
+
+        .button-primary:hover {
+            filter: brightness(1.1);
+        }
+
+        .button-secondary {
+            background-color: transparent;
+            color: var(--color-text-primary);
+            border: 1px solid var(--color-text-secondary);
+        }
+
+        .button-secondary:hover {
+            border-color: var(--color-text-primary);
+        }
+
+        /* ============================================================
+           BEREICH 6 — ABSCHLUSS-MARKER
+           Dezenter radialer Gelb-Glow als atmosphärische Aufladung
+           der Schlussbotschaft. Klasse .completion-not-yet ist für
+           Iteration 8 vorgesehen — JS togglet sie zur Anzeige des
+           "noch nicht abgeschlossen"-Zustands (opacity 0.4 auf den
+           Inhalt, der Glow bleibt sichtbar).
+           ============================================================ */
+        .section-6 {
+            background-color: var(--color-bg-deep);
+            background-image: radial-gradient(
+                ellipse at center,
+                rgba(232, 226, 38, 0.08) 0%,
+                rgba(232, 226, 38, 0.0) 70%
+            );
+            padding-top: 100px;
+            padding-bottom: 100px;
+        }
+
+        .completion-headline {
+            font-size: 32px;
+            font-weight: 600;
+            color: var(--color-accent-yellow);
+            line-height: 1.2;
+            text-align: center;
+            margin: 0;
+        }
+
+        .completion-text {
+            font-size: 16px;
+            font-weight: 400;
+            color: var(--color-text-primary);
+            line-height: 1.6;
+            text-align: center;
+            max-width: 600px;
+            margin: 24px auto 0 auto;
+        }
+
+        /* In Iteration 8 wird .completion-not-yet via JS auf .section-6
+           gesetzt, solange die Lernreise nicht abgeschlossen ist.
+           Aktuell nicht angewendet — nur vorbereitet. */
+        .section-6.completion-not-yet .completion-headline,
+        .section-6.completion-not-yet .completion-text {
+            opacity: 0.4;
+            transition: opacity 0.6s ease;
+        }
+
+        /* ============================================================
+           BEREICH 7 — VERTIEFUNG (PODCAST)
+           Visueller Bruch zur Lernreise durch (a) Hintergrundwechsel
+           bg-deep → bg-mid, (b) Trennlinie + Eyebrow-Label
+           "ZUSATZANGEBOT" am Sektions-Anfang.
+           ============================================================ */
+        .section-7 {
+            background-color: var(--color-bg-mid);
+            padding-top: 80px;
+            padding-bottom: 80px;
+        }
+
+        .extension-divider {
+            height: 1px;
+            background-color: var(--color-divider);
+            margin-bottom: 16px;
+        }
+
+        .extension-label {
+            font-size: 11px;
+            font-weight: 600;
+            color: var(--color-text-muted);
+            letter-spacing: 0.15em;
+            text-transform: uppercase;
+            text-align: center;
+            margin: 0 0 16px 0;
+        }
+
+        .extension-title {
+            font-size: 28px;
+            font-weight: 600;
+            color: var(--color-text-primary);
+            line-height: 1.2;
+            text-align: center;
+            margin: 24px 0 0 0;
+        }
+
+        .extension-intro {
+            font-size: 16px;
+            font-weight: 400;
+            color: var(--color-text-secondary);
+            line-height: 1.6;
+            text-align: center;
+            max-width: 700px;
+            margin: 16px auto 0 auto;
+        }
+
+        .podcast-card {
+            display: flex;
+            flex-direction: row;
+            gap: 24px;
+            max-width: 600px;
+            margin: 40px auto 0 auto;
+            padding: 24px;
+            background-color: var(--color-bg-deep);
+            border-radius: 4px;
+        }
+
+        .podcast-cover {
+            display: block;
+            width: 120px;
+            height: 120px;
+            object-fit: cover;
+            border-radius: 4px;
+            background-color: #000;
+            flex-shrink: 0;
+        }
+
+        .podcast-info {
+            display: flex;
+            flex-direction: column;
+            flex-grow: 1;
+            gap: 8px;
+            min-width: 0;
+        }
+
+        .podcast-title {
+            font-size: 16px;
+            font-weight: 600;
+            color: var(--color-text-primary);
+            line-height: 1.3;
+            margin: 0;
+        }
+
+        .podcast-subtitle {
+            font-size: 12px;
+            font-weight: 400;
+            color: var(--color-text-muted);
+            line-height: 1.4;
+            margin: 0;
+        }
+
+        .podcast-audio {
+            width: 100%;
+            margin-top: 8px;
+        }
+
+        .podcast-duration {
+            font-size: 12px;
+            font-weight: 400;
+            color: var(--color-text-muted);
+            text-align: right;
+            margin: 0;
+        }
+
+        /* ============================================================
+           FOOTER
+           ============================================================ */
+        .site-footer {
+            background-color: var(--color-bg-deep);
+            padding-top: 40px;
+            padding-bottom: 40px;
+        }
+
+        .footer-version {
+            font-size: 11px;
+            font-weight: 400;
+            color: var(--color-text-muted);
+            text-align: center;
+            margin: 0;
+        }
+
+        /* ============================================================
+           MODAL-OVERLAY (für Hotspot-Karten)
+           Vollflächiger Layer, der per JS ein iframe einblendet.
+           body.modal-active sperrt das Hintergrund-Scrolling.
+           ============================================================ */
+        .modal-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0, 0, 0, 0.85);
+            z-index: 1000;
+            display: none;
+            justify-content: center;
+            align-items: center;
+            padding: 24px;
+        }
+
+        .modal-overlay.is-open {
+            display: flex;
+        }
+
+        .modal-container {
+            position: relative;
+            width: 90%;
+            max-width: 1400px;
+            height: 90vh;
+            background-color: var(--color-bg-deep);
+            border-radius: 4px;
+            overflow: hidden;
+            box-shadow: 0 8px 48px rgba(0, 0, 0, 0.6);
+        }
+
+        .modal-iframe {
+            width: 100%;
+            height: 100%;
+            border: 0;
+            display: block;
+        }
+
+        .modal-close {
+            position: absolute;
+            top: 12px;
+            right: 12px;
+            width: 36px;
+            height: 36px;
+            background-color: var(--color-bg-deep);
+            border: 1px solid var(--color-divider);
+            border-radius: 50%;
+            color: var(--color-text-primary);
+            font-size: 18px;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            z-index: 1001;
+            transition: background-color 0.2s ease, border-color 0.2s ease;
+        }
+
+        .modal-close:hover {
+            background-color: var(--color-bg-mid);
+            border-color: var(--color-text-secondary);
+        }
+
+        body.modal-active {
+            overflow: hidden;
+        }
+
+        /* ============================================================
+           MOBILE HINWEISBANNER
+           Erscheint einmalig bei Viewport < 768px, dismissbar.
+           Status wird in LocalStorage persistiert.
+           ============================================================ */
+        .mobile-banner {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            background-color: var(--color-bg-mid);
+            color: var(--color-text-primary);
+            padding: 12px 16px;
+            z-index: 999;
+            display: none;
+            align-items: center;
+            gap: 12px;
+            box-shadow: 0 2px 12px rgba(0, 0, 0, 0.4);
+            font-size: 13px;
+            line-height: 1.4;
+        }
+
+        .mobile-banner.is-visible {
+            display: flex;
+        }
+
+        .mobile-banner-text {
+            flex-grow: 1;
+            margin: 0;
+        }
+
+        .mobile-banner-close {
+            flex-shrink: 0;
+            width: 28px;
+            height: 28px;
+            background-color: transparent;
+            border: 1px solid var(--color-text-secondary);
+            border-radius: 50%;
+            color: var(--color-text-primary);
+            font-size: 14px;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        /* ============================================================
+           RESPONSIVE — REFLEXIONSKARTE-UMBRUCH (< 1000px)
+           Sobald die Image-Spalte (~424px) plus Gap (60px) plus
+           Actions-Spalte (max 400px) nicht mehr bequem ins
+           .section-inner-Layout passen, wechselt das Modul-3-Grid
+           auf eine Spalte. Bild wird dann fluide bis 500px breit
+           und horizontal zentriert.
+           ============================================================ */
+        @media (max-width: 999px) {
+            .reflexionskarte-layout {
+                grid-template-columns: 1fr;
+                gap: 40px;
+            }
+
+            .reflexionskarte-image {
+                height: auto;
+                width: 100%;
+                max-width: 500px;
+                margin: 0 auto;
+            }
+
+            .reflexionskarte-actions {
+                max-width: 100%;
+            }
+        }
+
+        /* ============================================================
+           RESPONSIVE — TABLET (< 900px)
+           Vier-Block-Grid wechselt auf zwei Spalten.
+           ============================================================ */
+        @media (max-width: 899px) {
+            .info-grid {
+                grid-template-columns: repeat(2, 1fr);
+            }
+
+            .hotspot-grid {
+                grid-template-columns: repeat(2, 1fr);
+            }
+        }
+
+        /* ============================================================
+           RESPONSIVE — MOBILE (< 768px)
+           ============================================================ */
+        @media (max-width: 767px) {
+            .header-headline {
+                font-size: 36px;
+            }
+
+            .header-subheadline {
+                font-size: 16px;
+            }
+
+            .sinnsatz {
+                font-size: 18px;
+            }
+
+            .module-title {
+                font-size: 22px;
+            }
+
+            .module-intro {
+                font-size: 15px;
+            }
+
+            .completion-headline {
+                font-size: 26px;
+            }
+
+            .extension-title {
+                font-size: 22px;
+            }
+        }
+
+        /* ============================================================
+           RESPONSIVE — KLEINER MOBILE (< 600px)
+           Vier-Block-Grid einspaltig, Fortschrittslinien kürzer.
+           ============================================================ */
+        @media (max-width: 599px) {
+            .info-grid {
+                grid-template-columns: 1fr;
+            }
+
+            /* Einspaltig braucht keine gemeinsame Heading-Linie mehr. */
+            .info-block-heading {
+                min-height: 0;
+            }
+
+            .progress-indicator {
+                gap: 30px;
+            }
+
+            .progress-step:not(:last-child)::after {
+                width: 30px;
+            }
+
+            .module-title {
+                font-size: 20px;
+            }
+
+            .hotspot-grid {
+                grid-template-columns: 1fr;
+            }
+
+            .module-bridge-text {
+                font-size: 15px;
+            }
+
+            .reflexionskarte-image {
+                max-width: 100%;
+            }
+
+            .button {
+                width: 100%;
+            }
+
+            .completion-headline {
+                font-size: 22px;
+            }
+
+            .extension-title {
+                font-size: 20px;
+            }
+
+            .podcast-card {
+                flex-direction: column;
+                gap: 16px;
+                padding: 16px;
+            }
+
+            .podcast-cover {
+                width: 100%;
+                max-width: 200px;
+                height: auto;
+                aspect-ratio: 1 / 1;
+                margin: 0 auto;
+            }
+        }
+    </style>
+</head>
+<body>
+
+    <!-- Mobile-Hinweisbanner — wird per JS bei Viewport < 768px eingeblendet -->
+    <div class="mobile-banner" id="mobile-banner" role="status">
+        <p class="mobile-banner-text">Diese Lernreise ist für die Nutzung am Desktop optimiert. Auf kleineren Bildschirmen funktionieren einige interaktive Elemente möglicherweise eingeschränkt.</p>
+        <button class="mobile-banner-close" id="mobile-banner-close" aria-label="Hinweis schließen">×</button>
+    </div>
+
+    <!-- Bereich 1 — Header -->
+    <header role="banner" aria-label="Header" class="section-1">
+        <img
+            class="header-image"
+            src="assets/images/header.png"
+            alt="Mehrere Schreibtische in einer offenen Bürolandschaft, jeder mit einem leuchtenden Lichtkreis um die jeweilige Person — symbolisiert die kollektive Aufgabe der verantwortlichen KI-Nutzung.">
+        <div class="header-overlay" aria-hidden="true"></div>
+        <div class="section-inner header-content">
+            <h1 class="header-headline">Mit KI verantwortlich arbeiten.</h1>
+            <p class="header-subheadline">Eine Lernreise zum Umgang mit generativer KI.</p>
+        </div>
+        <div class="scroll-indicator" aria-hidden="true">
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <polyline points="6 9 12 15 18 9"></polyline>
+            </svg>
+        </div>
+    </header>
+
+    <main>
+
+        <!-- Bereich 2 — Sinnsatz -->
+        <section aria-label="Sinnsatz" class="section-2">
+            <div class="section-inner">
+                <p class="sinnsatz">KI verändert die Verwaltungsarbeit. Diese Lernreise zeigt, wie Sie damit verantwortungsvoll umgehen.</p>
+            </div>
+        </section>
+
+        <!-- Bereich 3 — Vier-Block-Übersicht -->
+        <section aria-label="Übersicht" class="section-3">
+            <div class="section-inner">
+                <div class="info-grid">
+
+                    <div class="info-block">
+                        <svg class="info-block-icon" width="40" height="40" viewBox="0 0 40 40" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                            <circle cx="20" cy="20" r="14"/>
+                            <path d="M20 8 L20 32 M8 20 L32 20"/>
+                            <circle cx="20" cy="20" r="2.5"/>
+                        </svg>
+                        <h3 class="info-block-heading">Lernziel</h3>
+                        <p class="info-block-text">Sie verstehen, wie generative KI Texte erzeugt, erkennen die typischen Risiken und wissen, welche Verantwortung Sie als Nutzerin oder Nutzer tragen.</p>
+                    </div>
+
+                    <div class="info-block">
+                        <svg class="info-block-icon" width="40" height="40" viewBox="0 0 40 40" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                            <line x1="10" y1="13" x2="30" y2="13"/>
+                            <line x1="10" y1="20" x2="30" y2="20"/>
+                            <line x1="10" y1="27" x2="30" y2="27"/>
+                        </svg>
+                        <h3 class="info-block-heading">Welche Inhalte erwarten mich?</h3>
+                        <p class="info-block-text">Ein kurzes Erklärvideo, drei interaktive Vertiefungen, eine Reflexionskarte zum Mitnehmen.</p>
+                    </div>
+
+                    <div class="info-block">
+                        <svg class="info-block-icon" width="40" height="40" viewBox="0 0 40 40" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                            <circle cx="20" cy="20" r="14"/>
+                            <circle cx="20" cy="20" r="9"/>
+                            <circle cx="20" cy="20" r="4"/>
+                        </svg>
+                        <h3 class="info-block-heading">Was werde ich erreichen?</h3>
+                        <p class="info-block-text">Sie werden KI-Antworten gezielter prüfen, Halluzinationen erkennen und Ihre Rolle im Umgang mit dem Werkzeug bewusst wahrnehmen.</p>
+                    </div>
+
+                    <div class="info-block">
+                        <svg class="info-block-icon" width="40" height="40" viewBox="0 0 40 40" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                            <polyline points="10,21 17,28 30,13"/>
+                        </svg>
+                        <h3 class="info-block-heading">Welche Voraussetzungen benötige ich?</h3>
+                        <p class="info-block-text">Keine. Die Lernreise richtet sich an alle, die zum ersten Mal mit generativer KI arbeiten.</p>
+                    </div>
+
+                </div>
+            </div>
+        </section>
+
+        <!-- Bereich 4 — Übergang zur Lernreise -->
+        <section aria-label="Übergang zur Lernreise" class="section-4">
+            <div class="section-inner">
+                <p class="transition-label">Die Lernreise beginnt</p>
+                <ol class="progress-indicator" aria-label="Fortschritt der Lernreise">
+                    <li class="progress-step is-active" aria-current="step"></li>
+                    <li class="progress-step"></li>
+                    <li class="progress-step"></li>
+                    <li class="progress-step"></li>
+                    <li class="progress-step"></li>
+                </ol>
+                <p class="progress-status" id="progress-status">Schritt 1 von 5</p>
+            </div>
+        </section>
+
+        <!-- Bereich 5 — Lernreise (drei Module) -->
+        <section aria-label="Lernreise" class="section-5">
+            <div class="section-inner">
+
+                <article class="module module-1" aria-labelledby="modul-1-titel">
+                    <p class="module-indicator">MODUL 1</p>
+                    <h2 class="module-title" id="modul-1-titel">Wie KI Texte erzeugt</h2>
+                    <p class="module-intro">Die Lernreise beginnt mit einem Erklärvideo. Sie sehen in knapp drei Minuten, wie eine KI Texte erzeugt — und warum eine flüssige Antwort allein nichts beweist.</p>
+                    <video class="module-video" controls preload="metadata" poster="assets/images/video-poster.png" playsinline>
+                        <source src="assets/video/erklaervideo.mp4" type="video/mp4">
+                        Ihr Browser unterstützt das Video-Element nicht.
+                    </video>
+                    <p class="module-duration">Dauer: 2:40 Min.</p>
+                </article>
+
+                <aside class="module-bridge" aria-hidden="false">
+                    <p class="module-bridge-text">Sie haben jetzt das Grundprinzip kennengelernt. Die folgenden drei Vertiefungen erlauben Ihnen, einzelne Aspekte selbst zu erkunden — wann immer Sie wollen, in beliebiger Reihenfolge.</p>
+                </aside>
+
+                <article class="module module-2" aria-labelledby="modul-2-titel">
+                    <p class="module-indicator">MODUL 2</p>
+                    <h2 class="module-title" id="modul-2-titel">Drei Vertiefungen zum Selbsterkunden</h2>
+                    <p class="module-intro">Klicken Sie auf eine der drei Grafiken, um sie im Detail zu erkunden. Jede Grafik enthält klickbare Bereiche, hinter denen sich weitere Erklärungen, Beispiele und Reflexionsimpulse verbergen.</p>
+                    <div class="hotspot-grid">
+
+                        <a class="hotspot-card" href="hotspots/hotspot-1.html" aria-label="Hotspot-Grafik 1: Wie die KI antwortet">
+                            <img class="hotspot-card-image" src="assets/images/hotspot-1-preview.png" alt="Konzeptionelle Darstellung der KI-Mechanik: Schreibtisch links, abstrakter Datenraum rechts.">
+                            <h3 class="hotspot-card-title">Wie die KI antwortet</h3>
+                        </a>
+
+                        <a class="hotspot-card" href="hotspots/hotspot-2.html" aria-label="Hotspot-Grafik 2: Wenn die KI sich irrt">
+                            <img class="hotspot-card-image" src="assets/images/hotspot-2-preview.png" alt="Bildschirm mit AI-Antwort, eine Zeile in warnendem Orange hervorgehoben.">
+                            <h3 class="hotspot-card-title">Wenn die KI sich irrt</h3>
+                        </a>
+
+                        <a class="hotspot-card" href="hotspots/hotspot-3.html" aria-label="Hotspot-Grafik 3: Der Mensch in der Schleife">
+                            <img class="hotspot-card-image" src="assets/images/hotspot-3-preview.png" alt="Aufsicht auf einen Schreibtisch mit gelbem Lichtkreis um die Heldin.">
+                            <h3 class="hotspot-card-title">Der Mensch in der Schleife</h3>
+                        </a>
+
+                    </div>
+                </article>
+
+                <aside class="module-bridge" aria-hidden="false">
+                    <p class="module-bridge-text">Was Sie gesehen und erkundet haben, lässt sich in drei Prinzipien zusammenfassen. Die Reflexionskarte fasst sie als Erinnerung für den dienstlichen Alltag zusammen.</p>
+                </aside>
+
+                <article class="module module-3" aria-labelledby="modul-3-titel">
+                    <p class="module-indicator">MODUL 3</p>
+                    <h2 class="module-title" id="modul-3-titel">Die drei Prinzipien zum Mitnehmen</h2>
+                    <p class="module-intro">Eine kompakte Karte mit den drei Kernprinzipien — als Erinnerung, die neben Ihrem Bildschirm liegen kann. Schauen Sie online drauf oder laden Sie sie als druckbare PDF herunter.</p>
+                    <div class="reflexionskarte-layout">
+                        <div class="reflexionskarte-preview">
+                            <img class="reflexionskarte-image" src="assets/images/karte-preview.png" alt="Vorschau der Reflexionskarte im A4-Hochformat, dunkel gestaltet mit drei Spalten zu den Kernprinzipien.">
+                        </div>
+                        <div class="reflexionskarte-actions">
+                            <p class="reflexionskarte-description">Die Reflexionskarte ist im DIN-A4-Hochformat gestaltet und sowohl digital als auch ausgedruckt nutzbar.</p>
+                            <div class="reflexionskarte-buttons">
+                                <a class="button button-primary" href="reflexionskarte.html" target="_blank" rel="noopener">Karte ansehen</a>
+                                <a class="button button-secondary" href="reflexionskarte.html?print=true" target="_blank" rel="noopener">Als PDF herunterladen</a>
+                            </div>
+                        </div>
+                    </div>
+                </article>
+
+            </div>
+        </section>
+
+        <!-- Bereich 6 — Abschluss-Marker -->
+        <section aria-label="Abschluss" class="section-6">
+            <div class="section-inner">
+                <h2 class="completion-headline">Sie haben die Lernreise abgeschlossen.</h2>
+                <p class="completion-text">Die drei Prinzipien begleiten Sie ab jetzt. Wenn eine KI-Antwort vor Ihnen liegt — Sie wissen, was zu tun ist.</p>
+            </div>
+        </section>
+
+        <!-- Bereich 7 — Vertiefung (Podcast) -->
+        <section aria-label="Vertiefung" class="section-7">
+            <div class="section-inner">
+                <div class="extension-divider"></div>
+                <p class="extension-label">ZUSATZANGEBOT</p>
+                <h2 class="extension-title">Wenn Sie tiefer einsteigen wollen</h2>
+                <p class="extension-intro">Über die Lernreise hinaus steht ein Podcast zur Verfügung. Er beleuchtet die Frage nach der menschlichen Verantwortung aus einer vertiefenden Perspektive. Etwa sieben Minuten Hörzeit.</p>
+                <div class="podcast-card">
+                    <img class="podcast-cover" src="assets/images/podcast-cover.png" alt="Cover-Bild des Podcasts.">
+                    <div class="podcast-info">
+                        <h3 class="podcast-title">Generative KI im Behördenkontext</h3>
+                        <p class="podcast-subtitle">Eine vertiefende Betrachtung</p>
+                        <audio class="podcast-audio" controls preload="metadata">
+                            <source src="assets/audio/podcast.m4a" type="audio/mp4">
+                            <source src="assets/audio/podcast.m4a" type="audio/x-m4a">
+                            Ihr Browser unterstützt das Audio-Element nicht.
+                        </audio>
+                        <p class="podcast-duration">Dauer ca. 7 Min.</p>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- Modal-Overlay — wird per JS gefüllt und eingeblendet -->
+        <div class="modal-overlay" id="hotspot-modal" role="dialog" aria-modal="true" aria-hidden="true" aria-labelledby="modal-title">
+            <div class="modal-container">
+                <button class="modal-close" id="modal-close-button" aria-label="Modal schließen">×</button>
+                <iframe class="modal-iframe" id="modal-iframe" src="" title=""></iframe>
+            </div>
+        </div>
+
+    </main>
+
+    <!-- Footer -->
+    <footer role="contentinfo" class="site-footer">
+        <div class="section-inner">
+            <p class="footer-version">Lernreise zur Arbeit mit generativer KI · Stand Mai 2026</p>
+        </div>
+    </footer>
+
+    <script>
+        "use strict";
+
+        (function () {
+            // ============================================================
+            // KONSTANTEN
+            // ============================================================
+
+            /** Schlüssel für die LocalStorage-Persistenz. Versions-Suffix
+             *  erlaubt Schema-Migrationen, ohne alte Daten zu zerstören. */
+            const PROGRESS_KEY = "lernreise-progress-v1";
+
+            /** Mobile-Banner erscheint unter dieser Viewport-Breite. */
+            const MOBILE_BREAKPOINT = 768;
+
+            /** Default-Status — auch der Schema-Anker für loadProgress(). */
+            const DEFAULT_PROGRESS = {
+                module1Started: false,
+                module1Completed: false,
+                hotspot1Opened: false,
+                hotspot2Opened: false,
+                hotspot3Opened: false,
+                module2Completed: false,
+                module3Completed: false,
+                mobileBannerDismissed: false
+            };
+
+            // ============================================================
+            // ZUSTANDS-VERWALTUNG (LOCALSTORAGE)
+            // ============================================================
+
+            /**
+             * Lädt den Status aus LocalStorage. Robust gegen
+             * Parse-Fehler und gesperrtes Storage. Fehlende Felder
+             * werden mit Default-Werten ergänzt — Forward-Compatibility
+             * gegenüber älteren Versions-Schemata.
+             * @returns {Object} Status-Objekt mit allen Default-Feldern.
+             */
+            function loadProgress() {
+                try {
+                    const raw = localStorage.getItem(PROGRESS_KEY);
+                    if (!raw) {
+                        return Object.assign({}, DEFAULT_PROGRESS);
+                    }
+                    const parsed = JSON.parse(raw);
+                    if (!parsed || typeof parsed !== "object") {
+                        return Object.assign({}, DEFAULT_PROGRESS);
+                    }
+                    return Object.assign({}, DEFAULT_PROGRESS, parsed);
+                } catch (e) {
+                    return Object.assign({}, DEFAULT_PROGRESS);
+                }
+            }
+
+            /**
+             * Speichert den Status in LocalStorage.
+             * Schluckt Quota- und Storage-Fehler still — die Session
+             * läuft im Speicher weiter, nur die Persistenz fällt aus.
+             * @param {Object} p Vollständiges Status-Objekt.
+             */
+            function saveProgress(p) {
+                try {
+                    localStorage.setItem(PROGRESS_KEY, JSON.stringify(p));
+                } catch (e) {
+                    // Quota überschritten oder Storage gesperrt: ignorieren.
+                }
+            }
+
+            /**
+             * Mergt Updates in den aktuellen Status, persistiert und
+             * triggert eine UI-Synchronisation.
+             * @param {Object} updates Teilobjekt mit zu ändernden Feldern.
+             */
+            function updateProgress(updates) {
+                progress = Object.assign({}, progress, updates);
+                saveProgress(progress);
+                updateUI();
+            }
+
+            // ============================================================
+            // FORTSCHRITTSINDIKATOR-LOGIK
+            // ============================================================
+
+            /**
+             * Berechnet aus dem Status den is-active/is-completed-
+             * Zustand der fünf Schritte.
+             *
+             * Regel pro Schritt N (Index 0–4):
+             *   - is-completed, wenn die Bedingung von Schritt N+1
+             *     bereits erfüllt ist (wir sind bereits weiter)
+             *   - is-active, wenn die eigene Bedingung erfüllt ist,
+             *     aber die nächste noch nicht
+             *   - leer sonst
+             *
+             * Sonderfall: alle drei Module abgeschlossen → alle
+             * fünf Schritte is-completed.
+             *
+             * Default: ohne irgendeinen Fortschritt ist Schritt 1 aktiv.
+             *
+             * @param {Object} p Status-Objekt.
+             * @returns {string[]} Array mit fünf CSS-Klassen-Strings.
+             */
+            function computeStepStates(p) {
+                const allCompleted = p.module1Completed && p.module2Completed && p.module3Completed;
+
+                if (allCompleted) {
+                    return ["is-completed", "is-completed", "is-completed", "is-completed", "is-completed"];
+                }
+
+                const conditions = [
+                    p.module1Started,
+                    p.module1Completed,
+                    p.module2Completed,
+                    p.module3Completed,
+                    false  // Schritt 5 wird nur über allCompleted erreicht (oben behandelt).
+                ];
+
+                const states = ["", "", "", "", ""];
+                let foundActive = false;
+
+                for (let i = 0; i < 5; i++) {
+                    const thisCond = conditions[i];
+                    const nextCond = i < 4 ? conditions[i + 1] : false;
+
+                    if (nextCond) {
+                        states[i] = "is-completed";
+                    } else if (thisCond && !foundActive) {
+                        states[i] = "is-active";
+                        foundActive = true;
+                    }
+                }
+
+                if (!foundActive) {
+                    states[0] = "is-active";
+                }
+
+                return states;
+            }
+
+            // ============================================================
+            // UI-SYNCHRONISATION
+            // ============================================================
+
+            /**
+             * Synchronisiert sichtbare UI mit dem aktuellen Status:
+             * Fortschritts-Schritte, Statustext, Abschluss-Marker.
+             * Wird beim initialen Laden + nach jeder Status-Änderung
+             * aufgerufen.
+             */
+            function updateUI() {
+                const allCompleted = progress.module1Completed && progress.module2Completed && progress.module3Completed;
+                const states = computeStepStates(progress);
+
+                // Fortschritts-Schritte: Klassen + aria-current synchronisieren.
+                const steps = document.querySelectorAll(".progress-indicator .progress-step");
+                steps.forEach(function (step, i) {
+                    step.classList.remove("is-active", "is-completed");
+                    step.removeAttribute("aria-current");
+                    if (states[i]) {
+                        step.classList.add(states[i]);
+                        if (states[i] === "is-active") {
+                            step.setAttribute("aria-current", "step");
+                        }
+                    }
+                });
+
+                // Statustext.
+                const statusEl = document.getElementById("progress-status");
+                if (statusEl) {
+                    if (allCompleted) {
+                        statusEl.textContent = "Lernreise abgeschlossen";
+                    } else {
+                        const activeIdx = states.findIndex(function (s) { return s === "is-active"; });
+                        const stepNum = activeIdx >= 0 ? activeIdx + 1 : 1;
+                        statusEl.textContent = "Schritt " + stepNum + " von 5";
+                    }
+                }
+
+                // Abschluss-Marker (Bereich 6): completion-not-yet togglen.
+                const section6 = document.querySelector(".section-6");
+                if (section6) {
+                    section6.classList.toggle("completion-not-yet", !allCompleted);
+                }
+            }
+
+            // ============================================================
+            // MOBILE-BANNER-LOGIK
+            // ============================================================
+
+            /**
+             * Zeigt oder versteckt den Mobile-Banner basierend auf
+             * Viewport-Breite + Dismissed-Status. Wird beim Laden
+             * und bei jedem Resize aufgerufen.
+             */
+            function applyMobileBannerVisibility() {
+                const banner = document.getElementById("mobile-banner");
+                if (!banner) return;
+                const shouldShow = window.innerWidth < MOBILE_BREAKPOINT && !progress.mobileBannerDismissed;
+                banner.classList.toggle("is-visible", shouldShow);
+            }
+
+            // ============================================================
+            // MODAL-OVERLAY
+            // ============================================================
+
+            /** Speichert das vor Modal-Öffnung fokussierte Element,
+             *  um den Fokus beim Schließen wiederherzustellen. */
+            let lastFocusedElement = null;
+
+            /**
+             * Öffnet das Modal-Overlay mit der gegebenen URL im iframe.
+             * @param {string} href URL der einzubettenden HTML-Seite.
+             * @param {string} title Title-Attribut für das iframe (a11y).
+             */
+            function openModal(href, title) {
+                const modal = document.getElementById("hotspot-modal");
+                const iframe = document.getElementById("modal-iframe");
+                if (!modal || !iframe) return;
+
+                lastFocusedElement = document.activeElement;
+
+                iframe.src = href;
+                iframe.title = title || "Hotspot-Grafik";
+                modal.classList.add("is-open");
+                modal.setAttribute("aria-hidden", "false");
+                document.body.classList.add("modal-active");
+
+                const closeBtn = document.getElementById("modal-close-button");
+                if (closeBtn && typeof closeBtn.focus === "function") {
+                    closeBtn.focus();
+                }
+            }
+
+            /**
+             * Schließt das Modal-Overlay und gibt iframe-src frei
+             * (verhindert weiteres Laden im Hintergrund). Stellt den
+             * Fokus auf das vor der Öffnung fokussierte Element zurück.
+             */
+            function closeModal() {
+                const modal = document.getElementById("hotspot-modal");
+                const iframe = document.getElementById("modal-iframe");
+                if (!modal || !iframe) return;
+
+                modal.classList.remove("is-open");
+                modal.setAttribute("aria-hidden", "true");
+                document.body.classList.remove("modal-active");
+                iframe.src = "";
+                iframe.title = "";
+
+                if (lastFocusedElement && typeof lastFocusedElement.focus === "function") {
+                    lastFocusedElement.focus();
+                }
+                lastFocusedElement = null;
+            }
+
+            // ============================================================
+            // EVENT-LISTENER
+            // ============================================================
+
+            /**
+             * Registriert alle Event-Listener: Video, Hotspots,
+             * Reflexionskarte-Buttons, Modal, Mobile-Banner, Resize.
+             */
+            function registerEventListeners() {
+                // --- Modul 1: Video ---
+                const video = document.querySelector(".module-video");
+                if (video) {
+                    video.addEventListener("play", function () {
+                        if (!progress.module1Started) {
+                            updateProgress({ module1Started: true });
+                        }
+                    });
+                    video.addEventListener("ended", function () {
+                        if (!progress.module1Completed) {
+                            updateProgress({ module1Completed: true });
+                        }
+                    });
+                    // Bonus-Robustheit: bei manuellem Spulen über 95 % auch als beendet werten.
+                    video.addEventListener("timeupdate", function () {
+                        if (!progress.module1Completed && video.duration > 0) {
+                            if (video.currentTime / video.duration > 0.95) {
+                                updateProgress({ module1Completed: true });
+                            }
+                        }
+                    });
+                }
+
+                // --- Modul 2: Hotspot-Karten → Modal-Öffnung ---
+                const hotspotCards = document.querySelectorAll(".hotspot-card");
+                hotspotCards.forEach(function (card, index) {
+                    card.addEventListener("click", function (e) {
+                        e.preventDefault();
+
+                        const href = card.getAttribute("href");
+                        const titleEl = card.querySelector(".hotspot-card-title");
+                        const titleText = titleEl ? titleEl.textContent : "";
+
+                        openModal(href, "Hotspot-Grafik: " + titleText);
+
+                        // Status-Update: hotspotN_Opened + ggf. module2Completed.
+                        const updates = {};
+                        updates["hotspot" + (index + 1) + "Opened"] = true;
+
+                        const merged = Object.assign({}, progress, updates);
+                        if (merged.hotspot1Opened && merged.hotspot2Opened && merged.hotspot3Opened) {
+                            updates.module2Completed = true;
+                        }
+
+                        updateProgress(updates);
+                    });
+                });
+
+                // --- Modul 3: Reflexionskarte-Buttons ---
+                const module3 = document.querySelector(".module-3");
+                if (module3) {
+                    const buttons = module3.querySelectorAll(".button-primary, .button-secondary");
+                    buttons.forEach(function (btn) {
+                        btn.addEventListener("click", function () {
+                            if (!progress.module3Completed) {
+                                updateProgress({ module3Completed: true });
+                            }
+                            // Kein preventDefault — der Link soll regulär in neuem Tab öffnen.
+                        });
+                    });
+                }
+
+                // --- Modal: Schließen via Button, Backdrop-Click, Escape ---
+                const closeBtn = document.getElementById("modal-close-button");
+                if (closeBtn) {
+                    closeBtn.addEventListener("click", closeModal);
+                }
+                const modal = document.getElementById("hotspot-modal");
+                if (modal) {
+                    modal.addEventListener("click", function (e) {
+                        // Nur Klicks auf den Hintergrund (Overlay selbst), nicht auf den Container.
+                        if (e.target === modal) {
+                            closeModal();
+                        }
+                    });
+                }
+                document.addEventListener("keydown", function (e) {
+                    if (e.key === "Escape" || e.key === "Esc") {
+                        const m = document.getElementById("hotspot-modal");
+                        if (m && m.classList.contains("is-open")) {
+                            closeModal();
+                        }
+                    }
+                });
+
+                // --- Mobile-Banner: Schließen ---
+                const bannerClose = document.getElementById("mobile-banner-close");
+                if (bannerClose) {
+                    bannerClose.addEventListener("click", function () {
+                        const banner = document.getElementById("mobile-banner");
+                        if (banner) {
+                            banner.classList.remove("is-visible");
+                        }
+                        updateProgress({ mobileBannerDismissed: true });
+                    });
+                }
+
+                // --- Window-Resize: Banner-Sichtbarkeit neu prüfen ---
+                window.addEventListener("resize", applyMobileBannerVisibility);
+            }
+
+            // ============================================================
+            // INITIALISIERUNG
+            // ============================================================
+
+            // Status laden — Modul-übergreifend nutzbar.
+            let progress = loadProgress();
+
+            applyMobileBannerVisibility();
+            updateUI();
+            registerEventListeners();
+        })();
+    </script>
+
+</body>
+</html>
