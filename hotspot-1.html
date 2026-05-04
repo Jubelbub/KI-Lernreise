@@ -1,0 +1,571 @@
+<!doctype html>
+<html lang="de">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Wie die KI antwortet</title>
+<style>
+  :root {
+    --c-navy: #162A45;
+    --c-gelb: #E8E226;
+    --c-cyan: #009ED4;
+    --c-weiss: #ffffff;
+    --c-richtig: #4caf50;
+    --c-falsch: #ef5350;
+    --font: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+  }
+
+  * { box-sizing: border-box; }
+
+  html, body {
+    margin: 0;
+    padding: 0;
+    width: 100%;
+    height: 100%;
+    background: var(--c-navy);
+    font-family: var(--font);
+    color: var(--c-weiss);
+    overflow: hidden;
+    -webkit-font-smoothing: antialiased;
+  }
+
+  body {
+    min-height: 100dvh;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+
+  /* Bühne: 16:9 Container, der maximal in den Viewport passt */
+  .stage {
+    position: relative;
+    aspect-ratio: 1376 / 768;
+    width: min(100vw, calc(100dvh * 1376 / 768));
+    max-width: 100vw;
+    max-height: 100dvh;
+    background: var(--c-navy);
+    overflow: hidden;
+  }
+
+  .bg {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    user-select: none;
+    -webkit-user-drag: none;
+    pointer-events: none;
+  }
+
+  /* Hotspot-Marker */
+  .hotspot {
+    position: absolute;
+    width: 44px;
+    height: 44px;
+    margin: 0;
+    padding: 0;
+    border: 0;
+    background: transparent;
+    transform: translate(-50%, -50%);
+    cursor: pointer;
+    touch-action: manipulation;
+    -webkit-tap-highlight-color: transparent;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 50%;
+    z-index: 2;
+  }
+
+  .hotspot:focus-visible {
+    outline: 2px solid var(--c-cyan);
+    outline-offset: 2px;
+  }
+
+  .hotspot-dot {
+    width: 18px;
+    height: 18px;
+    border-radius: 50%;
+    background: var(--c-gelb);
+    box-shadow:
+      0 0 0 3px rgba(22,42,69,0.7),
+      0 0 0 0 rgba(232,226,38,0.7);
+    animation: pulse 1.8s ease-out infinite;
+    transition: transform .15s ease;
+  }
+
+  .hotspot:hover .hotspot-dot,
+  .hotspot:focus-visible .hotspot-dot {
+    transform: scale(1.15);
+  }
+
+  @keyframes pulse {
+    0%   { box-shadow: 0 0 0 3px rgba(22,42,69,0.7), 0 0 0 0   rgba(232,226,38,0.7); }
+    70%  { box-shadow: 0 0 0 3px rgba(22,42,69,0.7), 0 0 0 22px rgba(232,226,38,0); }
+    100% { box-shadow: 0 0 0 3px rgba(22,42,69,0.7), 0 0 0 0   rgba(232,226,38,0); }
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .hotspot-dot { animation: none; }
+  }
+
+  /* Overlay & Panel */
+  .panel-overlay {
+    position: fixed;
+    inset: 0;
+    background: rgba(0, 0, 0, 0.55);
+    backdrop-filter: blur(4px);
+    -webkit-backdrop-filter: blur(4px);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 10;
+    opacity: 0;
+    transition: opacity .2s ease;
+  }
+
+  .panel-overlay.show { opacity: 1; }
+  .panel-overlay[hidden] { display: none; }
+
+  .panel {
+    position: relative;
+    width: min(560px, calc(100vw - 32px));
+    max-height: 85dvh;
+    overflow-y: auto;
+    background: rgba(22, 42, 69, 0.95);
+    backdrop-filter: blur(8px);
+    -webkit-backdrop-filter: blur(8px);
+    border-radius: 16px;
+    border: 1px solid rgba(232, 226, 38, 0.2);
+    box-shadow: 0 24px 48px rgba(0,0,0,0.5);
+    transform: translateY(8px);
+    transition: transform .22s ease;
+  }
+
+  .panel-overlay.show .panel { transform: translateY(0); }
+
+  .panel-image {
+    display: block;
+    width: 100%;
+    max-height: 220px;
+    object-fit: contain;
+    background: #0e1c2e;
+    border-radius: 16px 16px 0 0;
+  }
+
+  .panel-image[hidden] { display: none; }
+
+  .panel-title {
+    font-size: 22px;
+    line-height: 1.3;
+    margin: 20px 24px 0 24px;
+    color: var(--c-gelb);
+    letter-spacing: .2px;
+  }
+
+  .panel-body {
+    padding: 12px 24px 24px 24px;
+    font-size: 15.5px;
+    line-height: 1.6;
+  }
+
+  .panel-body p {
+    margin: 0 0 12px 0;
+  }
+
+  .panel-close {
+    position: absolute;
+    top: 8px;
+    right: 8px;
+    width: 44px;
+    height: 44px;
+    border-radius: 50%;
+    border: 0;
+    background: rgba(0, 0, 0, 0.35);
+    color: var(--c-weiss);
+    font-size: 26px;
+    line-height: 1;
+    cursor: pointer;
+    touch-action: manipulation;
+    -webkit-tap-highlight-color: transparent;
+    z-index: 3;
+    transition: background .15s ease, color .15s ease;
+  }
+
+  .panel-close:hover,
+  .panel-close:focus-visible {
+    background: rgba(0, 0, 0, 0.6);
+    color: var(--c-gelb);
+    outline: none;
+  }
+
+  /* Quiz */
+  .quiz {
+    display: flex;
+    flex-direction: column;
+    gap: 18px;
+  }
+
+  .quiz-item {
+    background: rgba(255, 255, 255, 0.04);
+    border-radius: 12px;
+    padding: 14px 16px;
+    border: 1px solid rgba(255, 255, 255, 0.08);
+  }
+
+  .quiz-statement {
+    margin: 0 0 12px 0;
+    font-size: 15.5px;
+    line-height: 1.5;
+  }
+
+  .quiz-buttons {
+    display: flex;
+    gap: 10px;
+  }
+
+  .quiz-btn {
+    flex: 1;
+    min-height: 44px;
+    border: 2px solid var(--c-cyan);
+    background: transparent;
+    color: var(--c-weiss);
+    font-family: inherit;
+    font-size: 15px;
+    font-weight: 600;
+    border-radius: 10px;
+    cursor: pointer;
+    touch-action: manipulation;
+    -webkit-tap-highlight-color: transparent;
+    transition: background .15s ease, color .15s ease, border-color .15s ease, opacity .15s ease;
+  }
+
+  .quiz-btn:hover:not(:disabled),
+  .quiz-btn:focus-visible:not(:disabled) {
+    background: rgba(0, 158, 212, 0.15);
+    outline: none;
+  }
+
+  .quiz-btn:disabled {
+    cursor: default;
+  }
+
+  .quiz-btn.is-correct {
+    background: var(--c-richtig);
+    border-color: var(--c-richtig);
+    color: #fff;
+  }
+
+  .quiz-btn.is-wrong {
+    background: var(--c-falsch);
+    border-color: var(--c-falsch);
+    color: #fff;
+  }
+
+  .quiz-item[data-answered="true"] .quiz-btn:not(.is-correct):not(.is-wrong) {
+    opacity: 0.4;
+  }
+
+  .quiz-feedback {
+    margin-top: 12px;
+    padding: 10px 12px;
+    background: rgba(255, 255, 255, 0.06);
+    border-left: 3px solid var(--c-gelb);
+    border-radius: 4px;
+    font-size: 14.5px;
+    line-height: 1.5;
+  }
+
+  .quiz-feedback[hidden] { display: none; }
+
+  .quiz-feedback strong {
+    color: var(--c-gelb);
+  }
+
+  /* Mobile: Panel als Bottom-Sheet */
+  @media (max-width: 600px) {
+    .panel-overlay {
+      align-items: flex-end;
+      justify-content: stretch;
+    }
+
+    .panel {
+      width: 100%;
+      max-width: 100%;
+      max-height: 90dvh;
+      border-radius: 16px 16px 0 0;
+      border-bottom: 0;
+      transform: translateY(100%);
+      padding-bottom: env(safe-area-inset-bottom, 0);
+    }
+
+    .panel-overlay.show .panel {
+      transform: translateY(0);
+    }
+
+    .panel-image {
+      border-radius: 16px 16px 0 0;
+      max-height: 180px;
+    }
+
+    .panel-title {
+      font-size: 20px;
+      margin: 18px 20px 0 20px;
+    }
+
+    .panel-body {
+      padding: 10px 20px 20px 20px;
+    }
+  }
+</style>
+</head>
+<body>
+
+<div class="stage" id="stage">
+  <img class="bg" src="Grafik1_Hintergrundbild.png" alt="Hintergrundgrafik: Wie die KI antwortet">
+
+  <button class="hotspot" data-id="1A" style="left:25%;top:35%" aria-label="Tokenisierung">
+    <span class="hotspot-dot" aria-hidden="true"></span>
+  </button>
+  <button class="hotspot" data-id="1B" style="left:55%;top:55%" aria-label="Beziehungen">
+    <span class="hotspot-dot" aria-hidden="true"></span>
+  </button>
+  <button class="hotspot" data-id="1C" style="left:75%;top:70%" aria-label="Wort für Wort">
+    <span class="hotspot-dot" aria-hidden="true"></span>
+  </button>
+  <button class="hotspot" data-id="1D" style="left:15%;top:75%" aria-label="Mini-Quiz">
+    <span class="hotspot-dot" aria-hidden="true"></span>
+  </button>
+</div>
+
+<div class="panel-overlay" id="overlay" hidden>
+  <article class="panel" role="dialog" aria-modal="true" aria-labelledby="panel-title">
+    <button class="panel-close" id="panel-close" aria-label="Schließen">&times;</button>
+    <img class="panel-image" id="panel-image" alt="" hidden>
+    <h2 class="panel-title" id="panel-title"></h2>
+    <div class="panel-body" id="panel-body"></div>
+  </article>
+</div>
+
+<script>
+(function () {
+  'use strict';
+
+  const PANELS = {
+    '1A': {
+      title: 'Tokenisierung',
+      image: 'Grafik1_Hotspot1.png',
+      text: 'Bevor die KI antworten kann, zerlegt sie jede Frage in winzige Bausteine — sogenannte Token. Ein Token kann ein ganzes Wort sein, ein Wortteil oder ein Satzzeichen. Die KI versteht keine Sätze, sondern verarbeitet Folgen von Token. Sie liest nicht — sie verkettet. Diese Zerlegung ist die Voraussetzung für jeden weiteren Schritt: Erst wenn der Text in Token aufgeteilt ist, kann die KI ihn in Zahlen übersetzen und mit ihnen rechnen.'
+    },
+    '1B': {
+      title: 'Beziehungen',
+      image: 'Grafik1_Hotspot2.png',
+      text: 'Die KI prüft, wie stark jedes Wort mit jedem anderen Wort im Text zusammenhängt. Im Satz „Ist die Bank nass?" könnte „Bank" eine Sitzbank oder ein Geldinstitut sein. Die KI weiß es nicht. Aber sie misst: „nass" passt statistisch viel besser zu einer Sitzbank als zu einem Geldinstitut. So entscheidet sie sich für die wahrscheinlichere Bedeutung. Das ist kein Verstehen. Es ist Rechnen mit Wahrscheinlichkeiten.'
+    },
+    '1C': {
+      title: 'Wort für Wort',
+      image: 'Grafik1_Hotspot3.png',
+      text: 'Eine KI schreibt nicht den ganzen Satz auf einmal. Sie wählt jeweils nur das nächste Wort — und zwar das, was statistisch am besten zum bisherigen Text passt. Aus einer Rangliste möglicher Fortsetzungen gewinnt das wahrscheinlichste Wort. Dann das nächste. Dann das nächste. So entsteht jeder Satz, den ein KI-Sprachmodell je geschrieben hat. Die KI plant den Satz nicht. Sie kennt sein Ende nicht, wenn sie am Anfang steht.'
+    },
+    '1D': {
+      title: 'Mini-Quiz',
+      image: null,
+      quiz: [
+        {
+          statement: 'Die KI versteht meine Frage so wie ein Mensch.',
+          correct: false,
+          explanation: 'Sie verarbeitet Token und Wahrscheinlichkeiten, kein Verstehen im menschlichen Sinn.'
+        },
+        {
+          statement: 'Die KI schreibt jeden Satz Wort für Wort.',
+          correct: true,
+          explanation: 'Sie wählt immer nur das statistisch nächste Wort.'
+        },
+        {
+          statement: 'Wenn die KI antwortet, kennt sie die richtige Lösung.',
+          correct: false,
+          explanation: 'Sie kennt keine Wahrheit, nur Wahrscheinlichkeiten.'
+        }
+      ]
+    }
+  };
+
+  const overlay     = document.getElementById('overlay');
+  const panelImage  = document.getElementById('panel-image');
+  const panelTitle  = document.getElementById('panel-title');
+  const panelBody   = document.getElementById('panel-body');
+  const closeBtn    = document.getElementById('panel-close');
+  const stage       = document.getElementById('stage');
+
+  // Quiz-Zustand wird beim Schließen zurückgesetzt
+  let quizState = PANELS['1D'].quiz.map(() => ({ answered: false, choice: null }));
+
+  function resetQuizState() {
+    quizState = PANELS['1D'].quiz.map(() => ({ answered: false, choice: null }));
+  }
+
+  let currentId = null;
+
+  function openPanel(id) {
+    const data = PANELS[id];
+    if (!data) return;
+    currentId = id;
+
+    panelTitle.textContent = data.title;
+
+    if (data.image) {
+      panelImage.src = data.image;
+      panelImage.alt = data.title;
+      panelImage.hidden = false;
+    } else {
+      panelImage.removeAttribute('src');
+      panelImage.alt = '';
+      panelImage.hidden = true;
+    }
+
+    panelBody.innerHTML = '';
+
+    if (data.quiz) {
+      panelBody.appendChild(buildQuiz(data.quiz));
+    } else {
+      const p = document.createElement('p');
+      p.textContent = data.text;
+      panelBody.appendChild(p);
+    }
+
+    overlay.hidden = false;
+    // Force reflow für Transition
+    void overlay.offsetWidth;
+    overlay.classList.add('show');
+
+    // Focus auf Schließen-Button für Tastatur-Nutzer
+    setTimeout(() => closeBtn.focus({ preventScroll: true }), 0);
+  }
+
+  function closePanel() {
+    if (currentId === null) return;
+    const wasQuiz = currentId === '1D';
+    overlay.classList.remove('show');
+    const onEnd = () => {
+      overlay.hidden = true;
+      overlay.removeEventListener('transitionend', onEnd);
+    };
+    overlay.addEventListener('transitionend', onEnd);
+    // Fallback falls transitionend nicht feuert
+    setTimeout(() => { if (!overlay.classList.contains('show')) overlay.hidden = true; }, 350);
+    currentId = null;
+    if (wasQuiz) resetQuizState();
+  }
+
+  function buildQuiz(items) {
+    const wrap = document.createElement('div');
+    wrap.className = 'quiz';
+
+    items.forEach((item, idx) => {
+      const itemEl = document.createElement('div');
+      itemEl.className = 'quiz-item';
+      itemEl.dataset.correct = String(item.correct);
+
+      const stmt = document.createElement('p');
+      stmt.className = 'quiz-statement';
+      stmt.textContent = item.statement;
+      itemEl.appendChild(stmt);
+
+      const btnRow = document.createElement('div');
+      btnRow.className = 'quiz-buttons';
+
+      const btnTrue  = document.createElement('button');
+      const btnFalse = document.createElement('button');
+      btnTrue.className  = 'quiz-btn';
+      btnFalse.className = 'quiz-btn';
+      btnTrue.type  = 'button';
+      btnFalse.type = 'button';
+      btnTrue.textContent  = 'Wahr';
+      btnFalse.textContent = 'Falsch';
+      btnTrue.dataset.answer  = 'true';
+      btnFalse.dataset.answer = 'false';
+      btnRow.appendChild(btnTrue);
+      btnRow.appendChild(btnFalse);
+      itemEl.appendChild(btnRow);
+
+      const fb = document.createElement('div');
+      fb.className = 'quiz-feedback';
+      fb.hidden = true;
+      itemEl.appendChild(fb);
+
+      // Persistierten Zustand wiederherstellen
+      const state = quizState[idx];
+      if (state.answered) {
+        applyAnswer(itemEl, item, state.choice);
+      }
+
+      const handle = (chosen) => {
+        if (state.answered) return;
+        state.answered = true;
+        state.choice = chosen;
+        applyAnswer(itemEl, item, chosen);
+      };
+
+      btnTrue.addEventListener('click',  () => handle(true));
+      btnFalse.addEventListener('click', () => handle(false));
+
+      wrap.appendChild(itemEl);
+    });
+
+    return wrap;
+  }
+
+  function applyAnswer(itemEl, item, chosen) {
+    itemEl.dataset.answered = 'true';
+    const buttons = itemEl.querySelectorAll('.quiz-btn');
+    buttons.forEach(b => {
+      b.disabled = true;
+      const ans = b.dataset.answer === 'true';
+      if (ans === item.correct) {
+        b.classList.add('is-correct');
+      }
+      if (ans === chosen && chosen !== item.correct) {
+        b.classList.add('is-wrong');
+      }
+    });
+    const fb = itemEl.querySelector('.quiz-feedback');
+    const verdict = (chosen === item.correct)
+      ? '<strong>Richtig.</strong> '
+      : '<strong>Falsch.</strong> ';
+    fb.innerHTML = verdict + escapeHtml(item.explanation);
+    fb.hidden = false;
+  }
+
+  function escapeHtml(s) {
+    return String(s)
+      .replaceAll('&', '&amp;')
+      .replaceAll('<', '&lt;')
+      .replaceAll('>', '&gt;')
+      .replaceAll('"', '&quot;')
+      .replaceAll("'", '&#39;');
+  }
+
+  // Hotspot-Klicks (Pointer Events decken Maus + Touch + Pen ab)
+  stage.addEventListener('click', (e) => {
+    const btn = e.target.closest('.hotspot');
+    if (!btn) return;
+    e.preventDefault();
+    openPanel(btn.dataset.id);
+  });
+
+  // Schließen
+  closeBtn.addEventListener('click', closePanel);
+
+  overlay.addEventListener('click', (e) => {
+    if (e.target === overlay) closePanel();
+  });
+
+  document.addEventListener('keydown', (e) => {
+    if (e.key === 'Escape' && currentId !== null) closePanel();
+  });
+})();
+</script>
+
+</body>
+</html>
