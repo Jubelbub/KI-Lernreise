@@ -1,0 +1,924 @@
+<!doctype html>
+<html lang="de">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Der Mensch in der Schleife</title>
+<style>
+  :root {
+    --c-navy: #162A45;
+    --c-gelb: #E8E226;
+    --c-cyan: #009ED4;
+    --c-orange: #E8611A;
+    --c-weiss: #ffffff;
+    --c-richtig-soft: #1a4a2e;
+    --c-falsch-soft: #4a1a1a;
+    --c-neutral-soft: rgba(255,255,255,0.08);
+    --font: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+  }
+
+  * { box-sizing: border-box; }
+
+  html, body {
+    margin: 0;
+    padding: 0;
+    width: 100%;
+    height: 100%;
+    background: var(--c-navy);
+    font-family: var(--font);
+    color: var(--c-weiss);
+    overflow: hidden;
+    -webkit-font-smoothing: antialiased;
+  }
+
+  body {
+    min-height: 100dvh;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+
+  /* Bühne: 16:9 Container, der maximal in den Viewport passt */
+  .stage {
+    position: relative;
+    aspect-ratio: 1376 / 768;
+    width: min(100vw, calc(100dvh * 1376 / 768));
+    max-width: 100vw;
+    max-height: 100dvh;
+    background: var(--c-navy);
+    overflow: hidden;
+  }
+
+  .bg {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    user-select: none;
+    -webkit-user-drag: none;
+    pointer-events: none;
+  }
+
+  /* Hotspot-Marker */
+  .hotspot {
+    position: absolute;
+    width: 44px;
+    height: 44px;
+    margin: 0;
+    padding: 0;
+    border: 0;
+    background: transparent;
+    transform: translate(-50%, -50%);
+    cursor: pointer;
+    touch-action: manipulation;
+    -webkit-tap-highlight-color: transparent;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 50%;
+    z-index: 2;
+  }
+
+  .hotspot:focus-visible {
+    outline: 2px solid var(--c-cyan);
+    outline-offset: 2px;
+  }
+
+  .hotspot-dot {
+    width: 18px;
+    height: 18px;
+    border-radius: 50%;
+    background: var(--c-gelb);
+    box-shadow:
+      0 0 0 3px rgba(22,42,69,0.7),
+      0 0 0 0 rgba(232,226,38,0.7);
+    animation: pulse 1.8s ease-out infinite;
+    transition: transform .15s ease;
+  }
+
+  .hotspot:hover .hotspot-dot,
+  .hotspot:focus-visible .hotspot-dot {
+    transform: scale(1.15);
+  }
+
+  @keyframes pulse {
+    0%   { box-shadow: 0 0 0 3px rgba(22,42,69,0.7), 0 0 0 0   rgba(232,226,38,0.7); }
+    70%  { box-shadow: 0 0 0 3px rgba(22,42,69,0.7), 0 0 0 22px rgba(232,226,38,0); }
+    100% { box-shadow: 0 0 0 3px rgba(22,42,69,0.7), 0 0 0 0   rgba(232,226,38,0); }
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .hotspot-dot { animation: none; }
+  }
+
+  /* Overlay & Panel */
+  .panel-overlay {
+    position: fixed;
+    inset: 0;
+    background: rgba(0, 0, 0, 0.55);
+    backdrop-filter: blur(4px);
+    -webkit-backdrop-filter: blur(4px);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 10;
+    opacity: 0;
+    transition: opacity .2s ease;
+  }
+
+  .panel-overlay.show { opacity: 1; }
+  .panel-overlay[hidden] { display: none; }
+
+  .panel {
+    position: relative;
+    width: min(560px, calc(100vw - 32px));
+    max-height: 85dvh;
+    overflow-y: auto;
+    background: rgba(22, 42, 69, 0.95);
+    backdrop-filter: blur(8px);
+    -webkit-backdrop-filter: blur(8px);
+    border-radius: 16px;
+    border: 1px solid rgba(232, 226, 38, 0.2);
+    box-shadow: 0 24px 48px rgba(0,0,0,0.5);
+    transform: translateY(8px);
+    transition: transform .22s ease;
+  }
+
+  .panel-overlay.show .panel { transform: translateY(0); }
+
+  .panel-image {
+    display: block;
+    width: 100%;
+    max-height: 220px;
+    object-fit: contain;
+    background: #0e1c2e;
+    border-radius: 16px 16px 0 0;
+  }
+
+  .panel-image[hidden] { display: none; }
+
+  .panel-title {
+    font-size: 22px;
+    line-height: 1.3;
+    margin: 20px 24px 0 24px;
+    color: var(--c-gelb);
+    letter-spacing: .2px;
+  }
+
+  .panel-body {
+    padding: 12px 24px 24px 24px;
+    font-size: 15.5px;
+    line-height: 1.6;
+  }
+
+  .panel-body p {
+    margin: 0 0 12px 0;
+  }
+
+  .panel-close {
+    position: absolute;
+    top: 8px;
+    right: 8px;
+    width: 44px;
+    height: 44px;
+    border-radius: 50%;
+    border: 0;
+    background: rgba(0, 0, 0, 0.35);
+    color: var(--c-weiss);
+    font-size: 26px;
+    line-height: 1;
+    cursor: pointer;
+    touch-action: manipulation;
+    -webkit-tap-highlight-color: transparent;
+    z-index: 3;
+    transition: background .15s ease, color .15s ease;
+  }
+
+  .panel-close:hover,
+  .panel-close:focus-visible {
+    background: rgba(0, 0, 0, 0.6);
+    color: var(--c-gelb);
+    outline: none;
+  }
+
+  /* Prüf-Karten (Panel 3A) */
+  .check-intro { margin: 0 0 6px 0; }
+
+  .check-card {
+    background: rgba(255,255,255,0.06);
+    border-left: 4px solid var(--c-gelb);
+    border-radius: 8px;
+    padding: 12px 16px;
+    margin-top: 12px;
+    display: flex;
+    gap: 14px;
+    align-items: flex-start;
+  }
+  .check-card .num {
+    flex: 0 0 auto;
+    width: 28px; height: 28px;
+    border-radius: 50%;
+    background: var(--c-gelb);
+    color: var(--c-navy);
+    font-weight: 700;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 15px;
+    line-height: 1;
+  }
+  .check-card .body { font-size: 14.5px; line-height: 1.55; }
+  .check-card .body strong {
+    display: block;
+    color: var(--c-gelb);
+    margin-bottom: 4px;
+    font-size: 15px;
+  }
+
+  /* Bullet-Liste (Panel 3B) */
+  .bullet-intro { margin: 0 0 6px 0; }
+
+  .bullet-list {
+    list-style: none;
+    margin: 12px 0 14px;
+    padding: 0;
+  }
+  .bullet-list li {
+    position: relative;
+    padding-left: 28px;
+    margin-bottom: 10px;
+    font-size: 15px;
+    line-height: 1.55;
+  }
+  .bullet-list li::before {
+    content: "";
+    position: absolute;
+    left: 4px;
+    top: 7px;
+    width: 12px;
+    height: 12px;
+    border-radius: 50%;
+    background: var(--c-cyan);
+    box-shadow: 0 0 0 3px rgba(0,158,212,0.18);
+  }
+  .bullet-closer {
+    margin-top: 16px;
+    padding: 12px 14px;
+    background: rgba(0,158,212,0.08);
+    border-left: 3px solid var(--c-cyan);
+    border-radius: 4px;
+    font-size: 14.5px;
+    line-height: 1.55;
+  }
+
+  /* Verantwortungs-Block (Panel 3C) */
+  .responsibility-block {
+    margin-top: 16px;
+    padding: 14px 16px;
+    border: 2px solid var(--c-gelb);
+    background: rgba(232,226,38,0.08);
+    border-radius: 10px;
+    font-size: 15px;
+    line-height: 1.55;
+    font-weight: 500;
+  }
+
+  /* Quiz Single-Choice (Panel 3D) */
+  .quiz-case {
+    font-style: italic;
+    background: rgba(255,255,255,0.05);
+    border-left: 3px solid var(--c-cyan);
+    padding: 12px 14px;
+    border-radius: 6px;
+    margin-bottom: 16px;
+    font-size: 14.5px;
+    line-height: 1.55;
+  }
+
+  .choice-list {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    margin-bottom: 14px;
+  }
+
+  .choice {
+    display: flex;
+    gap: 12px;
+    align-items: flex-start;
+    min-height: 44px;
+    padding: 10px 14px;
+    background: rgba(255,255,255,0.04);
+    border: 2px solid rgba(255,255,255,0.12);
+    border-radius: 10px;
+    cursor: pointer;
+    touch-action: manipulation;
+    -webkit-tap-highlight-color: transparent;
+    transition: background .15s ease, border-color .15s ease;
+  }
+  .choice:hover:not(.is-disabled) { background: rgba(0,158,212,0.08); }
+  .choice.is-disabled { cursor: default; }
+  .choice.is-disabled input[type="radio"] { cursor: default; }
+
+  .choice input[type="radio"] {
+    appearance: none;
+    -webkit-appearance: none;
+    width: 22px;
+    height: 22px;
+    flex: 0 0 auto;
+    margin: 2px 0 0 0;
+    border: 2px solid rgba(255,255,255,0.4);
+    border-radius: 50%;
+    background: transparent;
+    position: relative;
+    cursor: pointer;
+  }
+  .choice input[type="radio"]:checked {
+    border-color: var(--c-cyan);
+  }
+  .choice input[type="radio"]:checked::after {
+    content: "";
+    position: absolute;
+    inset: 4px;
+    border-radius: 50%;
+    background: var(--c-cyan);
+  }
+
+  .choice .content {
+    flex: 1 1 auto;
+    font-size: 14.5px;
+    line-height: 1.5;
+  }
+  .choice .letter {
+    font-weight: 700;
+    color: var(--c-cyan);
+    margin-right: 4px;
+  }
+
+  .choice .marker {
+    flex: 0 0 auto;
+    align-self: center;
+    font-weight: 700;
+    font-size: 18px;
+    margin-left: 6px;
+    width: 22px;
+    text-align: center;
+  }
+  .choice .marker[hidden] { display: none; }
+
+  .choice.is-correct {
+    border-color: #2d7a4f;
+    background: rgba(26,74,46,0.4);
+  }
+  .choice.is-correct .letter { color: #6fcf97; }
+  .choice.is-correct .marker { color: #6fcf97; }
+
+  .choice.is-wrong {
+    border-color: #7a2d2d;
+    background: rgba(74,26,26,0.4);
+  }
+  .choice.is-wrong .letter { color: #ef8a8a; }
+  .choice.is-wrong .marker { color: #ef8a8a; }
+
+  .choice-submit {
+    width: 100%;
+    min-height: 44px;
+    background: var(--c-cyan);
+    color: var(--c-weiss);
+    border: 0;
+    border-radius: 10px;
+    font-family: inherit;
+    font-size: 15px;
+    font-weight: 600;
+    cursor: pointer;
+    touch-action: manipulation;
+    -webkit-tap-highlight-color: transparent;
+    transition: opacity .15s ease, background .15s ease;
+  }
+  .choice-submit:hover:not(:disabled),
+  .choice-submit:focus-visible:not(:disabled) {
+    background: #00b6f0;
+    outline: none;
+  }
+  .choice-submit:disabled {
+    opacity: 0.4;
+    pointer-events: none;
+    cursor: default;
+  }
+  .choice-submit[hidden] { display: none; }
+
+  .choice-feedback {
+    margin-top: 14px;
+    padding: 12px 14px;
+    border-radius: 8px;
+    border: 1px solid;
+    font-size: 14.5px;
+    line-height: 1.55;
+  }
+  .choice-feedback.is-correct {
+    background: var(--c-richtig-soft);
+    border-color: #2d7a4f;
+  }
+  .choice-feedback.is-wrong {
+    background: var(--c-falsch-soft);
+    border-color: #7a2d2d;
+  }
+  .choice-feedback[hidden] { display: none; }
+
+  .choice-info {
+    margin-top: 12px;
+    padding: 12px 14px;
+    background: var(--c-neutral-soft);
+    border-radius: 8px;
+    font-size: 14px;
+    line-height: 1.55;
+    color: rgba(255,255,255,0.85);
+  }
+  .choice-info[hidden] { display: none; }
+
+  .choice-reset {
+    margin-top: 14px;
+    min-height: 44px;
+    padding: 8px 18px;
+    background: transparent;
+    color: var(--c-weiss);
+    border: 1px solid rgba(255,255,255,0.3);
+    border-radius: 8px;
+    font-family: inherit;
+    font-size: 14px;
+    cursor: pointer;
+    touch-action: manipulation;
+    -webkit-tap-highlight-color: transparent;
+    transition: background .15s ease;
+  }
+  .choice-reset:hover,
+  .choice-reset:focus-visible {
+    background: rgba(255,255,255,0.06);
+    outline: none;
+  }
+  .choice-reset[hidden] { display: none; }
+
+  /* Mobile: Panel als Bottom-Sheet */
+  @media (max-width: 600px) {
+    .panel-overlay {
+      align-items: flex-end;
+      justify-content: stretch;
+    }
+
+    .panel {
+      width: 100%;
+      max-width: 100%;
+      max-height: 90dvh;
+      border-radius: 16px 16px 0 0;
+      border-bottom: 0;
+      transform: translateY(100%);
+      padding-bottom: env(safe-area-inset-bottom, 0);
+    }
+
+    .panel-overlay.show .panel {
+      transform: translateY(0);
+    }
+
+    .panel-image {
+      border-radius: 16px 16px 0 0;
+      max-height: 180px;
+    }
+
+    .panel-title {
+      font-size: 20px;
+      margin: 18px 20px 0 20px;
+    }
+
+    .panel-body {
+      padding: 10px 20px 20px 20px;
+    }
+  }
+</style>
+</head>
+<body>
+
+<div class="stage" id="stage">
+  <img class="bg" src="Grafik3_Hintergrundbild.png" alt="Hintergrundgrafik: Der Mensch in der Schleife">
+
+  <button class="hotspot" data-id="3A" style="left:37%;top:35%" aria-label="Was bedeutet Prüfen">
+    <span class="hotspot-dot" aria-hidden="true"></span>
+  </button>
+  <button class="hotspot" data-id="3B" style="left:64%;top:36%" aria-label="Was bedeutet Einordnen">
+    <span class="hotspot-dot" aria-hidden="true"></span>
+  </button>
+  <button class="hotspot" data-id="3C" style="left:50%;top:58%" aria-label="Verantwortung">
+    <span class="hotspot-dot" aria-hidden="true"></span>
+  </button>
+  <button class="hotspot" data-id="3D" style="left:50%;top:89%" aria-label="Mini-Quiz">
+    <span class="hotspot-dot" aria-hidden="true"></span>
+  </button>
+</div>
+
+<div class="panel-overlay" id="overlay" hidden>
+  <article class="panel" role="dialog" aria-modal="true" aria-labelledby="panel-title">
+    <button class="panel-close" id="panel-close" aria-label="Schließen">&times;</button>
+    <img class="panel-image" id="panel-image" alt="" hidden>
+    <h2 class="panel-title" id="panel-title"></h2>
+    <div class="panel-body" id="panel-body"></div>
+  </article>
+</div>
+
+<script>
+(function () {
+  'use strict';
+
+  const PANELS = {
+    '3A': {
+      title: 'Was bedeutet „Prüfen"?',
+      image: 'Grafik3_Hotspotgrafik1.png',
+      intro: 'Prüfen heißt nicht, jeder KI-Antwort zu misstrauen — und auch nicht, jede Aussage gegen externe Quellen zu validieren. Es heißt, mit drei Fragen bewusst durch die Antwort zu gehen:',
+      checks: [
+        {
+          num: 1,
+          heading: 'Stimmt das mit dem Originaldokument überein?',
+          text: 'Können Sie jeden Satz im hochgeladenen Dokument wiederfinden — oder zumindest sinngemäß ableiten? Was sich nicht verankern lässt, ist verdächtig.'
+        },
+        {
+          num: 2,
+          heading: 'Sind Zahlen, Daten, Paragrafen nachvollziehbar?',
+          text: 'Ziffern und Quellenangaben sind die häufigste Halluzinationsstelle. Hier lohnt sich der zweite Blick am meisten.'
+        },
+        {
+          num: 3,
+          heading: 'Würde ich meinen Namen unter diese Aussage setzen?',
+          text: 'Der innere Test der Verantwortbarkeit. Wenn Sie zögern, prüfen Sie die zögernde Stelle genauer.'
+        }
+      ]
+    },
+    '3B': {
+      title: 'Was bedeutet „Einordnen"?',
+      image: 'Grafik3_Hotspotgrafik2.png',
+      intro: 'Eine KI kennt keinen Kontext. Sie weiß nicht:',
+      bullets: [
+        'ob ein Vorgang dringend ist oder Zeit hat',
+        'wer adressiert wird — Kollege, Vorgesetzter, externe Stelle',
+        'was politisch sensibel ist oder kommunikativ heikel',
+        'welche Vorgeschichte ein Fall hat'
+      ],
+      closer: 'Die KI-Antwort ist eine sachliche Vorlage. Einordnung ist menschliche Aufgabe. Erst durch Sie wird aus einer korrekten Antwort eine passende Antwort — eine, die zum Empfänger passt, zur Lage, zum richtigen Tonfall.'
+    },
+    '3C': {
+      title: 'Verantwortung',
+      image: 'Grafik3_Hotspotgrafik3.png',
+      paragraphs: [
+        'Eine KI-Antwort ist eine Vorlage, keine Entscheidung. Verantwortlich bleibt, wer sie verwendet — Sie.',
+        'Was Sie aus einer KI-Antwort übernehmen, geht in Ihre dienstliche Bearbeitung ein: in die Akte, in den Dienstweg, in die Außenkommunikation. Damit gelten die gleichen Standards wie für jede andere Arbeit am Vorgang.'
+      ],
+      highlight: 'Eine KI-Vorlage entlastet Sie zeitlich, aber sie entlastet Sie nicht von der fachlichen Verantwortung. Wer einen Vorgang bearbeitet, bleibt zuständig — auch wenn ein Werkzeug Teile davon vorbereitet hat.'
+    },
+    '3D': {
+      title: 'Mini-Quiz: Human-in-the-loop im Dienstkontext',
+      image: null,
+      caseText: 'Sie haben eine KI-Stellungnahme zu einem politisch sensiblen Thema erhalten. Die KI liefert eine Vorlage, keine verbindliche Entscheidung. Bitte wählen Sie die Antwort, die am besten zum Prinzip Human-in-the-loop passt.',
+      correct: 'B',
+      options: [
+        {
+          letter: 'A',
+          text: 'Er schickt die KI-Antwort sofort an die zuständige Abteilung weiter, weil die KI oft genauer und schneller ist als der Mensch.',
+          feedback: '✗ Nein. Human-in-the-loop bedeutet nicht, die KI-Antwort ohne eigene Kontrolle weiterzugeben. Hier fehlt die Prüfung von Inhalt, Fakten und Kontext sowie die bewusste Übernahme der Verantwortung.'
+        },
+        {
+          letter: 'B',
+          text: 'Er prüft, ob die verwendeten Gesetzesparagrafen, Zahlen und Fakten mit den Originalakten übereinstimmen, überprüft, ob die Tonlage, Dringlichkeit und Zielgruppe zur Situation passen, und gibt die Stellungnahme erst weiter, wenn er sich selbst von der sachlichen Richtigkeit überzeugt hat.',
+          feedback: '✓ Richtig. Human-in-the-loop heißt hier: Die KI-Antwort ist eine Vorlage, die Sie inhaltlich, rechtlich und kontextuell prüfen, einordnen und erst dann verantwortlich weitergeben. Sie überprüfen Gesetzesparagrafen, Zahlen, Fakten, Tonlage, Dringlichkeit und Zielgruppe — und geben die Stellungnahme erst weiter, wenn Sie sich von der sachlichen Richtigkeit überzeugt haben.'
+        },
+        {
+          letter: 'C',
+          text: 'Er lässt die KI-Antwort von einem zweiten KI-System überprüfen und schickt dann das Ergebnis weiter, ohne selbst noch einmal in die Akten zu schauen.',
+          feedback: '✗ Nein. Human-in-the-loop bedeutet, dass der Mensch die Kontrollinstanz ist, nicht eine weitere KI. Hier wird die Verantwortung an eine andere KI abgeschoben.'
+        },
+        {
+          letter: 'D',
+          text: 'Er liest die KI-Antwort nur einmal durch und schickt sie dann weiter, weil er meint, dass die KI Feinheiten ohnehin besser beherrscht.',
+          feedback: '✗ Nein. Human-in-the-loop verlangt eine gründliche Kontrolle, nicht nur einmaliges Überfliegen. Die KI ersetzt Ihre sorgfältige Prüfung nicht.'
+        }
+      ],
+      info: 'Die richtige Antwort ist B. Human-in-the-loop heißt: KI-Antwort als Vorlage sehen, selbst prüfen, einordnen und verantwortlich handeln.'
+    }
+  };
+
+  const overlay     = document.getElementById('overlay');
+  const panelImage  = document.getElementById('panel-image');
+  const panelTitle  = document.getElementById('panel-title');
+  const panelBody   = document.getElementById('panel-body');
+  const closeBtn    = document.getElementById('panel-close');
+  const stage       = document.getElementById('stage');
+
+  let currentId = null;
+
+  // Quiz-Zustand wird beim Schließen zurückgesetzt
+  let choiceState = { selected: null, answered: false };
+
+  function resetChoiceState() {
+    choiceState = { selected: null, answered: false };
+  }
+
+  function escapeHtml(s) {
+    return String(s)
+      .replaceAll('&', '&amp;')
+      .replaceAll('<', '&lt;')
+      .replaceAll('>', '&gt;')
+      .replaceAll('"', '&quot;')
+      .replaceAll("'", '&#39;');
+  }
+
+  function openPanel(id) {
+    const data = PANELS[id];
+    if (!data) return;
+    currentId = id;
+
+    panelTitle.textContent = data.title;
+
+    if (data.image) {
+      panelImage.src = data.image;
+      panelImage.alt = data.title;
+      panelImage.hidden = false;
+    } else {
+      panelImage.removeAttribute('src');
+      panelImage.alt = '';
+      panelImage.hidden = true;
+    }
+
+    panelBody.innerHTML = '';
+
+    if (data.checks) {
+      panelBody.appendChild(buildChecks(data));
+    } else if (data.bullets) {
+      panelBody.appendChild(buildBullets(data));
+    } else if (data.highlight) {
+      panelBody.appendChild(buildResponsibility(data));
+    } else if (data.options) {
+      panelBody.appendChild(buildSingleChoice(data));
+    } else if (data.text) {
+      const p = document.createElement('p');
+      p.textContent = data.text;
+      panelBody.appendChild(p);
+    }
+
+    overlay.hidden = false;
+    // Force reflow für Transition
+    void overlay.offsetWidth;
+    overlay.classList.add('show');
+
+    // Focus auf Schließen-Button für Tastatur-Nutzer
+    setTimeout(() => closeBtn.focus({ preventScroll: true }), 0);
+  }
+
+  function closePanel() {
+    if (currentId === null) return;
+    const wasQuiz = currentId === '3D';
+    overlay.classList.remove('show');
+    const onEnd = () => {
+      overlay.hidden = true;
+      overlay.removeEventListener('transitionend', onEnd);
+    };
+    overlay.addEventListener('transitionend', onEnd);
+    // Fallback falls transitionend nicht feuert
+    setTimeout(() => { if (!overlay.classList.contains('show')) overlay.hidden = true; }, 350);
+    currentId = null;
+    if (wasQuiz) resetChoiceState();
+  }
+
+  function buildChecks(data) {
+    const wrap = document.createElement('div');
+
+    const intro = document.createElement('p');
+    intro.className = 'check-intro';
+    intro.textContent = data.intro;
+    wrap.appendChild(intro);
+
+    data.checks.forEach(c => {
+      const card = document.createElement('div');
+      card.className = 'check-card';
+
+      const num = document.createElement('div');
+      num.className = 'num';
+      num.textContent = String(c.num);
+      card.appendChild(num);
+
+      const body = document.createElement('div');
+      body.className = 'body';
+      const heading = document.createElement('strong');
+      heading.textContent = c.heading;
+      body.appendChild(heading);
+      body.appendChild(document.createTextNode(c.text));
+      card.appendChild(body);
+
+      wrap.appendChild(card);
+    });
+
+    return wrap;
+  }
+
+  function buildBullets(data) {
+    const wrap = document.createElement('div');
+
+    const intro = document.createElement('p');
+    intro.className = 'bullet-intro';
+    intro.textContent = data.intro;
+    wrap.appendChild(intro);
+
+    const ul = document.createElement('ul');
+    ul.className = 'bullet-list';
+    data.bullets.forEach(b => {
+      const li = document.createElement('li');
+      li.textContent = b;
+      ul.appendChild(li);
+    });
+    wrap.appendChild(ul);
+
+    const closer = document.createElement('div');
+    closer.className = 'bullet-closer';
+    closer.textContent = data.closer;
+    wrap.appendChild(closer);
+
+    return wrap;
+  }
+
+  function buildResponsibility(data) {
+    const wrap = document.createElement('div');
+
+    data.paragraphs.forEach(text => {
+      const p = document.createElement('p');
+      p.textContent = text;
+      wrap.appendChild(p);
+    });
+
+    const block = document.createElement('div');
+    block.className = 'responsibility-block';
+    block.textContent = data.highlight;
+    wrap.appendChild(block);
+
+    return wrap;
+  }
+
+  function buildSingleChoice(data) {
+    const wrap = document.createElement('div');
+
+    const caseEl = document.createElement('div');
+    caseEl.className = 'quiz-case';
+    caseEl.textContent = data.caseText;
+    wrap.appendChild(caseEl);
+
+    const list = document.createElement('div');
+    list.className = 'choice-list';
+
+    const choiceEls = [];
+
+    data.options.forEach(opt => {
+      const label = document.createElement('label');
+      label.className = 'choice';
+      label.dataset.letter = opt.letter;
+
+      const radio = document.createElement('input');
+      radio.type = 'radio';
+      radio.name = 'choice-3d';
+      radio.value = opt.letter;
+
+      const content = document.createElement('div');
+      content.className = 'content';
+      const letterSpan = document.createElement('span');
+      letterSpan.className = 'letter';
+      letterSpan.textContent = opt.letter + ')';
+      content.appendChild(letterSpan);
+      content.appendChild(document.createTextNode(' ' + opt.text));
+
+      const marker = document.createElement('span');
+      marker.className = 'marker';
+      marker.hidden = true;
+      marker.setAttribute('aria-hidden', 'true');
+
+      label.appendChild(radio);
+      label.appendChild(content);
+      label.appendChild(marker);
+
+      radio.addEventListener('change', () => {
+        if (choiceState.answered) return;
+        choiceState.selected = opt.letter;
+        submitBtn.disabled = false;
+      });
+
+      list.appendChild(label);
+      choiceEls.push({ label, radio, marker, letter: opt.letter });
+    });
+
+    wrap.appendChild(list);
+
+    const submitBtn = document.createElement('button');
+    submitBtn.type = 'button';
+    submitBtn.className = 'choice-submit';
+    submitBtn.textContent = 'Antwort wählen';
+    submitBtn.disabled = true;
+    wrap.appendChild(submitBtn);
+
+    const feedback = document.createElement('div');
+    feedback.className = 'choice-feedback';
+    feedback.hidden = true;
+    wrap.appendChild(feedback);
+
+    const info = document.createElement('div');
+    info.className = 'choice-info';
+    info.textContent = data.info;
+    info.hidden = true;
+    wrap.appendChild(info);
+
+    const resetBtn = document.createElement('button');
+    resetBtn.type = 'button';
+    resetBtn.className = 'choice-reset';
+    resetBtn.textContent = 'Nochmal versuchen';
+    resetBtn.hidden = true;
+    wrap.appendChild(resetBtn);
+
+    submitBtn.addEventListener('click', () => {
+      if (choiceState.answered || !choiceState.selected) return;
+      choiceState.answered = true;
+
+      const chosen = choiceState.selected;
+      const isRight = chosen === data.correct;
+
+      // Optionen markieren + sperren
+      choiceEls.forEach(({ label, radio, marker, letter }) => {
+        radio.disabled = true;
+        label.classList.add('is-disabled');
+
+        if (letter === chosen) {
+          if (isRight) {
+            label.classList.add('is-correct');
+            marker.textContent = '✓';
+            marker.hidden = false;
+          } else {
+            label.classList.add('is-wrong');
+            marker.textContent = '✗';
+            marker.hidden = false;
+          }
+        } else if (letter === data.correct && !isRight) {
+          // Falls falsch geantwortet: korrekte Option zusätzlich grün markieren
+          label.classList.add('is-correct');
+          marker.textContent = '✓';
+          marker.hidden = false;
+        }
+      });
+
+      // Feedback (antwortspezifisch)
+      const chosenOption = data.options.find(o => o.letter === chosen);
+      feedback.textContent = chosenOption ? chosenOption.feedback : '';
+      feedback.classList.remove('is-correct', 'is-wrong');
+      feedback.classList.add(isRight ? 'is-correct' : 'is-wrong');
+      feedback.hidden = false;
+
+      // Zusatzinfo (uniform)
+      info.hidden = false;
+
+      // Submit verstecken, Reset zeigen
+      submitBtn.hidden = true;
+      resetBtn.hidden = false;
+    });
+
+    resetBtn.addEventListener('click', () => {
+      resetChoiceState();
+      choiceEls.forEach(({ label, radio, marker }) => {
+        radio.disabled = false;
+        radio.checked = false;
+        label.classList.remove('is-disabled', 'is-correct', 'is-wrong');
+        marker.textContent = '';
+        marker.hidden = true;
+      });
+      feedback.textContent = '';
+      feedback.classList.remove('is-correct', 'is-wrong');
+      feedback.hidden = true;
+      info.hidden = true;
+      submitBtn.disabled = true;
+      submitBtn.hidden = false;
+      resetBtn.hidden = true;
+    });
+
+    return wrap;
+  }
+
+  // Hotspot-Klicks (Pointer Events decken Maus + Touch + Pen ab)
+  stage.addEventListener('click', (e) => {
+    const btn = e.target.closest('.hotspot');
+    if (!btn) return;
+    e.preventDefault();
+    openPanel(btn.dataset.id);
+  });
+
+  // Schließen
+  closeBtn.addEventListener('click', closePanel);
+
+  overlay.addEventListener('click', (e) => {
+    if (e.target === overlay) closePanel();
+  });
+
+  document.addEventListener('keydown', (e) => {
+    if (e.key === 'Escape' && currentId !== null) closePanel();
+  });
+})();
+</script>
+
+</body>
+</html>

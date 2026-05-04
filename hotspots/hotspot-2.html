@@ -1,0 +1,755 @@
+<!doctype html>
+<html lang="de">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Wenn die KI sich irrt</title>
+<style>
+  :root {
+    --c-navy: #162A45;
+    --c-gelb: #E8E226;
+    --c-cyan: #009ED4;
+    --c-orange: #E8611A;
+    --c-weiss: #ffffff;
+    --c-richtig-soft: #1a4a2e;
+    --c-falsch-soft: #4a1a1a;
+    --font: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+  }
+
+  * { box-sizing: border-box; }
+
+  html, body {
+    margin: 0;
+    padding: 0;
+    width: 100%;
+    height: 100%;
+    background: var(--c-navy);
+    font-family: var(--font);
+    color: var(--c-weiss);
+    overflow: hidden;
+    -webkit-font-smoothing: antialiased;
+  }
+
+  body {
+    min-height: 100dvh;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+
+  /* Bühne: 16:9 Container, der maximal in den Viewport passt */
+  .stage {
+    position: relative;
+    aspect-ratio: 1376 / 768;
+    width: min(100vw, calc(100dvh * 1376 / 768));
+    max-width: 100vw;
+    max-height: 100dvh;
+    background: var(--c-navy);
+    overflow: hidden;
+  }
+
+  .bg {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    user-select: none;
+    -webkit-user-drag: none;
+    pointer-events: none;
+  }
+
+  /* Hotspot-Marker */
+  .hotspot {
+    position: absolute;
+    width: 44px;
+    height: 44px;
+    margin: 0;
+    padding: 0;
+    border: 0;
+    background: transparent;
+    transform: translate(-50%, -50%);
+    cursor: pointer;
+    touch-action: manipulation;
+    -webkit-tap-highlight-color: transparent;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 50%;
+    z-index: 2;
+  }
+
+  .hotspot:focus-visible {
+    outline: 2px solid var(--c-cyan);
+    outline-offset: 2px;
+  }
+
+  .hotspot-dot {
+    width: 18px;
+    height: 18px;
+    border-radius: 50%;
+    background: var(--c-gelb);
+    box-shadow:
+      0 0 0 3px rgba(22,42,69,0.7),
+      0 0 0 0 rgba(232,226,38,0.7);
+    animation: pulse 1.8s ease-out infinite;
+    transition: transform .15s ease;
+  }
+
+  .hotspot:hover .hotspot-dot,
+  .hotspot:focus-visible .hotspot-dot {
+    transform: scale(1.15);
+  }
+
+  @keyframes pulse {
+    0%   { box-shadow: 0 0 0 3px rgba(22,42,69,0.7), 0 0 0 0   rgba(232,226,38,0.7); }
+    70%  { box-shadow: 0 0 0 3px rgba(22,42,69,0.7), 0 0 0 22px rgba(232,226,38,0); }
+    100% { box-shadow: 0 0 0 3px rgba(22,42,69,0.7), 0 0 0 0   rgba(232,226,38,0); }
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .hotspot-dot { animation: none; }
+  }
+
+  /* Overlay & Panel */
+  .panel-overlay {
+    position: fixed;
+    inset: 0;
+    background: rgba(0, 0, 0, 0.55);
+    backdrop-filter: blur(4px);
+    -webkit-backdrop-filter: blur(4px);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 10;
+    opacity: 0;
+    transition: opacity .2s ease;
+  }
+
+  .panel-overlay.show { opacity: 1; }
+  .panel-overlay[hidden] { display: none; }
+
+  .panel {
+    position: relative;
+    width: min(560px, calc(100vw - 32px));
+    max-height: 85dvh;
+    overflow-y: auto;
+    background: rgba(22, 42, 69, 0.95);
+    backdrop-filter: blur(8px);
+    -webkit-backdrop-filter: blur(8px);
+    border-radius: 16px;
+    border: 1px solid rgba(232, 226, 38, 0.2);
+    box-shadow: 0 24px 48px rgba(0,0,0,0.5);
+    transform: translateY(8px);
+    transition: transform .22s ease;
+  }
+
+  .panel-overlay.show .panel { transform: translateY(0); }
+
+  .panel-image {
+    display: block;
+    width: 100%;
+    max-height: 220px;
+    object-fit: contain;
+    background: #0e1c2e;
+    border-radius: 16px 16px 0 0;
+  }
+
+  .panel-image[hidden] { display: none; }
+
+  .panel-title {
+    font-size: 22px;
+    line-height: 1.3;
+    margin: 20px 24px 0 24px;
+    color: var(--c-gelb);
+    letter-spacing: .2px;
+  }
+
+  .panel-body {
+    padding: 12px 24px 24px 24px;
+    font-size: 15.5px;
+    line-height: 1.6;
+  }
+
+  .panel-body p {
+    margin: 0 0 12px 0;
+  }
+
+  .panel-close {
+    position: absolute;
+    top: 8px;
+    right: 8px;
+    width: 44px;
+    height: 44px;
+    border-radius: 50%;
+    border: 0;
+    background: rgba(0, 0, 0, 0.35);
+    color: var(--c-weiss);
+    font-size: 26px;
+    line-height: 1;
+    cursor: pointer;
+    touch-action: manipulation;
+    -webkit-tap-highlight-color: transparent;
+    z-index: 3;
+    transition: background .15s ease, color .15s ease;
+  }
+
+  .panel-close:hover,
+  .panel-close:focus-visible {
+    background: rgba(0, 0, 0, 0.6);
+    color: var(--c-gelb);
+    outline: none;
+  }
+
+  /* Vergleichsbox (Panel 2A) */
+  .compare-box {
+    padding: 12px 14px;
+    border-radius: 10px;
+    margin-top: 14px;
+    border: 2px solid;
+    background: rgba(255,255,255,0.04);
+  }
+  .compare-box.is-orange {
+    border-color: var(--c-orange);
+    background: rgba(232,97,26,0.08);
+  }
+  .compare-box.is-cyan {
+    border-color: var(--c-cyan);
+    background: rgba(0,158,212,0.08);
+  }
+  .compare-box .label {
+    font-size: 12.5px;
+    letter-spacing: .8px;
+    text-transform: uppercase;
+    font-weight: 700;
+    margin-bottom: 6px;
+  }
+  .compare-box.is-orange .label { color: var(--c-orange); }
+  .compare-box.is-cyan   .label { color: var(--c-cyan); }
+  .compare-box .text {
+    font-size: 15px;
+    line-height: 1.5;
+  }
+
+  /* Beispielkarte (Panel 2B) */
+  .example-card {
+    padding: 10px 14px;
+    border-radius: 8px;
+    margin-top: 10px;
+    background: rgba(255,255,255,0.05);
+    border-left: 4px solid var(--c-orange);
+  }
+  .example-card .heading {
+    color: var(--c-orange);
+    font-weight: 700;
+    font-size: 14.5px;
+    margin-bottom: 4px;
+  }
+  .example-card .text {
+    font-size: 14.5px;
+    line-height: 1.5;
+  }
+
+  /* Multi-Card-Quiz (Panel 2D) */
+  .match-card {
+    background: rgba(255,255,255,0.05);
+    border-radius: 12px;
+    padding: 14px 16px;
+    margin-top: 14px;
+    border: 1px solid rgba(255,255,255,0.08);
+  }
+  .match-card .statement {
+    margin: 0 0 12px 0;
+    font-size: 15px;
+    line-height: 1.5;
+  }
+  .match-card .buttons {
+    display: flex;
+    gap: 10px;
+    flex-wrap: wrap;
+  }
+  .match-btn {
+    flex: 1 1 180px;
+    min-height: 44px;
+    border-radius: 10px;
+    font-family: inherit;
+    font-size: 14.5px;
+    font-weight: 600;
+    cursor: pointer;
+    touch-action: manipulation;
+    -webkit-tap-highlight-color: transparent;
+    color: var(--c-weiss);
+    background: transparent;
+    border: 2px solid;
+    padding: 8px 12px;
+    transition: opacity .15s ease, background .15s ease;
+  }
+  .match-btn.is-cyan   { border-color: var(--c-cyan); }
+  .match-btn.is-orange { border-color: var(--c-orange); }
+  .match-btn.is-cyan:hover:not(:disabled),
+  .match-btn.is-cyan:focus-visible:not(:disabled)   { background: rgba(0,158,212,0.15); outline: none; }
+  .match-btn.is-orange:hover:not(:disabled),
+  .match-btn.is-orange:focus-visible:not(:disabled) { background: rgba(232,97,26,0.15); outline: none; }
+  .match-btn:disabled {
+    opacity: 0.4;
+    cursor: default;
+    pointer-events: none;
+  }
+
+  .match-feedback {
+    margin-top: 12px;
+    padding: 10px 12px;
+    border-radius: 8px;
+    font-size: 14.5px;
+    line-height: 1.5;
+    color: var(--c-weiss);
+  }
+  .match-feedback.is-correct   { background: var(--c-richtig-soft); }
+  .match-feedback.is-incorrect { background: var(--c-falsch-soft); }
+  .match-feedback[hidden] { display: none; }
+
+  .match-fazit {
+    margin-top: 22px;
+    padding: 14px 16px;
+    border-radius: 10px;
+    background: rgba(232,226,38,0.10);
+    border-left: 4px solid var(--c-gelb);
+    font-size: 15px;
+    line-height: 1.55;
+  }
+  .match-fazit[hidden] { display: none; }
+
+  .match-reset {
+    margin-top: 14px;
+    min-height: 44px;
+    padding: 8px 18px;
+    background: transparent;
+    color: var(--c-weiss);
+    border: 1px solid rgba(255,255,255,0.3);
+    border-radius: 8px;
+    font-family: inherit;
+    font-size: 14px;
+    cursor: pointer;
+    touch-action: manipulation;
+    -webkit-tap-highlight-color: transparent;
+    transition: background .15s ease;
+  }
+  .match-reset:hover,
+  .match-reset:focus-visible {
+    background: rgba(255,255,255,0.06);
+    outline: none;
+  }
+
+  .match-intro {
+    font-size: 15.5px;
+    line-height: 1.55;
+    margin: 0 0 4px 0;
+  }
+
+  /* Mobile: Panel als Bottom-Sheet */
+  @media (max-width: 600px) {
+    .panel-overlay {
+      align-items: flex-end;
+      justify-content: stretch;
+    }
+
+    .panel {
+      width: 100%;
+      max-width: 100%;
+      max-height: 90dvh;
+      border-radius: 16px 16px 0 0;
+      border-bottom: 0;
+      transform: translateY(100%);
+      padding-bottom: env(safe-area-inset-bottom, 0);
+    }
+
+    .panel-overlay.show .panel {
+      transform: translateY(0);
+    }
+
+    .panel-image {
+      border-radius: 16px 16px 0 0;
+      max-height: 180px;
+    }
+
+    .panel-title {
+      font-size: 20px;
+      margin: 18px 20px 0 20px;
+    }
+
+    .panel-body {
+      padding: 10px 20px 20px 20px;
+    }
+  }
+</style>
+</head>
+<body>
+
+<div class="stage" id="stage">
+  <img class="bg" src="Grafik2_Hintergrundbild.png" alt="Hintergrundgrafik: Wenn die KI sich irrt">
+
+  <button class="hotspot" data-id="2A" style="left:70%;top:25%" aria-label="Schöne Sprache ist nicht Wahrheit">
+    <span class="hotspot-dot" aria-hidden="true"></span>
+  </button>
+  <button class="hotspot" data-id="2B" style="left:72%;top:48%" aria-label="Was ist eine Halluzination">
+    <span class="hotspot-dot" aria-hidden="true"></span>
+  </button>
+  <button class="hotspot" data-id="2C" style="left:58%;top:85%" aria-label="Warum passieren Halluzinationen">
+    <span class="hotspot-dot" aria-hidden="true"></span>
+  </button>
+  <button class="hotspot" data-id="2D" style="left:20%;top:45%" aria-label="Zuordnungsaufgabe">
+    <span class="hotspot-dot" aria-hidden="true"></span>
+  </button>
+</div>
+
+<div class="panel-overlay" id="overlay" hidden>
+  <article class="panel" role="dialog" aria-modal="true" aria-labelledby="panel-title">
+    <button class="panel-close" id="panel-close" aria-label="Schließen">&times;</button>
+    <img class="panel-image" id="panel-image" alt="" hidden>
+    <h2 class="panel-title" id="panel-title"></h2>
+    <div class="panel-body" id="panel-body"></div>
+  </article>
+</div>
+
+<script>
+(function () {
+  'use strict';
+
+  const PANELS = {
+    '2A': {
+      title: 'Schöne Sprache ≠ Wahrheit',
+      image: 'Grafik2_Hotspotgrafik1.png',
+      intro: 'Eine flüssig formulierte KI-Antwort wirkt vertrauenswürdig — sauberer Satzbau, professioneller Ton, keine Unsicherheiten. Doch Form ist kein Beweis für Inhalt. Forschende nennen das die Fluency-Heuristic: den Trugschluss, dass schöne Sprache richtige Sprache ist.',
+      compareBoxes: [
+        {
+          tone: 'orange',
+          label: 'Elegant, aber falsch',
+          text: 'Die Stadt Münster wurde im Jahr 793 von Liudger gegründet und gilt als älteste Bischofsstadt Westfalens.'
+        },
+        {
+          tone: 'cyan',
+          label: 'Holprig, aber korrekt',
+          text: 'Münster ist eine sehr alte Stadt in Westfalen, über 1200 Jahre alt. Sie hat einen Bischofssitz, der schon im frühen Mittelalter wichtig war.'
+        }
+      ]
+    },
+    '2B': {
+      title: 'Was ist eine Halluzination?',
+      image: 'Grafik2_Hotspotgrafik2.png',
+      intro: 'Eine Halluzination ist eine erfundene Behauptung in einer KI-Antwort, die plausibel klingt — aber in der Realität nicht existiert.',
+      cards: [
+        {
+          heading: 'Erfundener Paragraf',
+          text: 'Die KI beruft sich auf „§ 47b PolG NRW" — den es so nicht gibt. Eine Norm, die plausibel klingt, weil sie wie andere Normen aussieht.'
+        },
+        {
+          heading: 'Falsches Datum',
+          text: 'Ein Erlass wird auf den 12. März datiert, tatsächlich erschien er am 12. Mai. Die KI hat die Zahl statistisch ergänzt, nicht recherchiert.'
+        },
+        {
+          heading: 'Nicht existierende Quelle',
+          text: 'Ein zitierter Leitfaden oder eine angebliche Studie, die niemand finden kann — weil sie nie geschrieben wurde.'
+        }
+      ]
+    },
+    '2C': {
+      title: 'Warum passieren Halluzinationen?',
+      image: 'Grafik2_Hotspotgrafik3.png',
+      paragraphs: [
+        'Die KI kennt nicht alles. Wenn ihr Wissen an einer Stelle Lücken hat, füllt sie diese — nicht mit der Wahrheit, sondern mit dem statistisch passendsten Material. Die KI lügt nicht. Sie weiß nicht einmal, dass sie sich irrt. Sie kennt nur einen einzigen Maßstab: Was passt am wahrscheinlichsten in den Text?',
+        'Wenn die KI einen Paragrafen erfindet, hat sie ihn nicht aus böser Absicht erdacht. Sie hat aus Mustern in ihren Trainingsdaten ein Muster zusammengesetzt, das wie ein echter Paragraf aussieht. Form perfekt. Inhalt frei erfunden.'
+      ]
+    },
+    '2D': {
+      title: 'Korrekte oder fehlerhafte Definition?',
+      image: null,
+      intro: 'Welche der folgenden Aussagen beschreibt am besten, was eine KI-Halluzination ist? Ordnen Sie jede Aussage zu.',
+      cards: [
+        {
+          statement: 'Eine KI-Halluzination liegt vor, wenn die KI eine Aussage macht, die zwar plausibel klingt, aber nur allgemeine Floskeln wiederholt und nichts Relevantes enthält.',
+          correctChoice: 'fehlerhaft',
+          feedbackKorrektClick:    '„Nein. Diese Aussage beschreibt inhaltsleere Allgemeinheiten, keine Halluzination. Eine Halluzination ist konkret falsch oder nicht belegbar — nicht nur nichtssagend."',
+          feedbackFehlerhaftClick: '„Richtig erkannt. Die Aussage enthält einen Denkfehler: Sie verwechselt ‚inhaltsleer‘ mit ‚falsch, aber plausibel‘ — das ist der Kern der Halluzinations-Definition."'
+        },
+        {
+          statement: 'Eine KI-Halluzination liegt vor, wenn die KI eine Aussage macht, die sachlich falsch oder nicht belegbar ist, obwohl sie plausibel klingt und wie ein bekannter Fakt erscheint.',
+          correctChoice: 'korrekt',
+          feedbackKorrektClick:    '„Richtig! Genau das ist eine KI-Halluzination: eine falsche oder nicht belegbare Aussage, die plausibel klingt und wie ein echter Fakt wirkt."',
+          feedbackFehlerhaftClick: '„Nein. Diese Aussage trifft die Kerndefinition einer Halluzination — die Kombination aus Falschheit und Plausibilität ist entscheidend."'
+        },
+        {
+          statement: 'Eine KI-Halluzination liegt vor, wenn die KI Aussagen macht, die sich untereinander widersprechen, obwohl jede einzelne für sich plausibel klingt.',
+          correctChoice: 'fehlerhaft',
+          feedbackKorrektClick:    '„Nein. Das beschreibt Inkonsistenz, nicht Halluzination. Eine Halluzination kann durchaus konsistent sein — und trotzdem vollständig falsch."',
+          feedbackFehlerhaftClick: '„Richtig erkannt. Die Aussage greift ein anderes Problem auf — Widersprüche im Output — nicht das Kernphänomen der Halluzination."'
+        },
+        {
+          statement: 'Eine KI-Halluzination liegt vor, wenn die KI eine Aussage macht, die so überzeugend klingt, dass die meisten Nutzer sie glauben — unabhängig davon, ob sie wahr ist.',
+          correctChoice: 'fehlerhaft',
+          feedbackKorrektClick:    '„Nein. Diese Aussage beschreibt nur Überzeugungskraft, nicht Halluzination. So wäre jede wirksame Lüge eine Halluzination — das ist zu ungenau."',
+          feedbackFehlerhaftClick: '„Richtig erkannt. Die Aussage ist zu unpräzise: Überzeugungskraft allein macht keine Halluzination aus."'
+        }
+      ],
+      fazit: 'Halluzinationen sind das zentrale Risiko beim Einsatz von KI-Sprachmodellen im dienstlichen Kontext. Die entscheidende Eigenschaft: Sie klingen echt — und sind es nicht. Prüfen Sie deshalb jede KI-Antwort, bevor Sie sie verwenden.'
+    }
+  };
+
+  const overlay     = document.getElementById('overlay');
+  const panelImage  = document.getElementById('panel-image');
+  const panelTitle  = document.getElementById('panel-title');
+  const panelBody   = document.getElementById('panel-body');
+  const closeBtn    = document.getElementById('panel-close');
+  const stage       = document.getElementById('stage');
+
+  // Zustand des Multi-Card-Quiz; wird beim Schließen zurückgesetzt
+  let matchState = PANELS['2D'].cards.map(() => ({ answered: false, choice: null }));
+
+  function resetMatchState() {
+    matchState = PANELS['2D'].cards.map(() => ({ answered: false, choice: null }));
+  }
+
+  let currentId = null;
+
+  function openPanel(id) {
+    const data = PANELS[id];
+    if (!data) return;
+    currentId = id;
+
+    panelTitle.textContent = data.title;
+
+    if (data.image) {
+      panelImage.src = data.image;
+      panelImage.alt = data.title;
+      panelImage.hidden = false;
+    } else {
+      panelImage.removeAttribute('src');
+      panelImage.alt = '';
+      panelImage.hidden = true;
+    }
+
+    panelBody.innerHTML = '';
+    renderPanelBody(id, data);
+
+    overlay.hidden = false;
+    void overlay.offsetWidth;
+    overlay.classList.add('show');
+
+    setTimeout(() => closeBtn.focus({ preventScroll: true }), 0);
+  }
+
+  function closePanel() {
+    if (currentId === null) return;
+    const wasMatch = currentId === '2D';
+    overlay.classList.remove('show');
+    const onEnd = () => {
+      overlay.hidden = true;
+      overlay.removeEventListener('transitionend', onEnd);
+    };
+    overlay.addEventListener('transitionend', onEnd);
+    setTimeout(() => { if (!overlay.classList.contains('show')) overlay.hidden = true; }, 350);
+    currentId = null;
+    if (wasMatch) resetMatchState();
+  }
+
+  function renderPanelBody(id, data) {
+    if (id === '2A') {
+      panelBody.appendChild(makeParagraph(data.intro));
+      data.compareBoxes.forEach(box => {
+        panelBody.appendChild(buildCompareBox(box));
+      });
+      return;
+    }
+    if (id === '2B') {
+      panelBody.appendChild(makeParagraph(data.intro));
+      data.cards.forEach(card => {
+        panelBody.appendChild(buildExampleCard(card));
+      });
+      return;
+    }
+    if (id === '2C') {
+      data.paragraphs.forEach(text => {
+        panelBody.appendChild(makeParagraph(text));
+      });
+      return;
+    }
+    if (id === '2D') {
+      const intro = document.createElement('p');
+      intro.className = 'match-intro';
+      intro.textContent = data.intro;
+      panelBody.appendChild(intro);
+      panelBody.appendChild(buildMatchQuiz(data.cards, data.fazit));
+      return;
+    }
+  }
+
+  function makeParagraph(text) {
+    const p = document.createElement('p');
+    p.textContent = text;
+    return p;
+  }
+
+  function buildCompareBox(box) {
+    const wrap = document.createElement('div');
+    wrap.className = 'compare-box ' + (box.tone === 'cyan' ? 'is-cyan' : 'is-orange');
+    const lab = document.createElement('div');
+    lab.className = 'label';
+    lab.textContent = box.label;
+    const txt = document.createElement('div');
+    txt.className = 'text';
+    txt.textContent = box.text;
+    wrap.appendChild(lab);
+    wrap.appendChild(txt);
+    return wrap;
+  }
+
+  function buildExampleCard(card) {
+    const wrap = document.createElement('div');
+    wrap.className = 'example-card';
+    const head = document.createElement('div');
+    head.className = 'heading';
+    head.textContent = card.heading;
+    const txt = document.createElement('div');
+    txt.className = 'text';
+    txt.textContent = card.text;
+    wrap.appendChild(head);
+    wrap.appendChild(txt);
+    return wrap;
+  }
+
+  function buildMatchQuiz(cards, fazitText) {
+    const wrap = document.createElement('div');
+    wrap.className = 'match-quiz';
+
+    const fazitEl = document.createElement('div');
+    fazitEl.className = 'match-fazit';
+    fazitEl.hidden = true;
+    fazitEl.textContent = fazitText;
+
+    const resetBtn = document.createElement('button');
+    resetBtn.type = 'button';
+    resetBtn.className = 'match-reset';
+    resetBtn.textContent = 'Zurücksetzen';
+
+    const cardEls = [];
+
+    cards.forEach((card, idx) => {
+      const cardEl = document.createElement('div');
+      cardEl.className = 'match-card';
+      cardEl.dataset.correct = card.correctChoice;
+      cardEl.dataset.answered = 'false';
+
+      const stmt = document.createElement('p');
+      stmt.className = 'statement';
+      stmt.textContent = card.statement;
+      cardEl.appendChild(stmt);
+
+      const btnRow = document.createElement('div');
+      btnRow.className = 'buttons';
+
+      const btnKorrekt = document.createElement('button');
+      btnKorrekt.type = 'button';
+      btnKorrekt.className = 'match-btn is-cyan';
+      btnKorrekt.dataset.choice = 'korrekt';
+      btnKorrekt.textContent = '→ Korrekte Definition';
+
+      const btnFehlerhaft = document.createElement('button');
+      btnFehlerhaft.type = 'button';
+      btnFehlerhaft.className = 'match-btn is-orange';
+      btnFehlerhaft.dataset.choice = 'fehlerhaft';
+      btnFehlerhaft.textContent = '→ Fehlerhafte Definition';
+
+      btnRow.appendChild(btnKorrekt);
+      btnRow.appendChild(btnFehlerhaft);
+      cardEl.appendChild(btnRow);
+
+      const fb = document.createElement('div');
+      fb.className = 'match-feedback';
+      fb.hidden = true;
+      cardEl.appendChild(fb);
+
+      const state = matchState[idx];
+      if (state.answered) {
+        applyMatchAnswer(cardEl, card, state.choice);
+      }
+
+      const handle = (chosen) => {
+        if (state.answered) return;
+        state.answered = true;
+        state.choice = chosen;
+        applyMatchAnswer(cardEl, card, chosen);
+        checkAllAnswered(cardEls, fazitEl);
+      };
+
+      btnKorrekt.addEventListener('click',     () => handle('korrekt'));
+      btnFehlerhaft.addEventListener('click',  () => handle('fehlerhaft'));
+
+      cardEls.push(cardEl);
+      wrap.appendChild(cardEl);
+    });
+
+    wrap.appendChild(fazitEl);
+    wrap.appendChild(resetBtn);
+
+    resetBtn.addEventListener('click', () => {
+      resetMatchState();
+      cardEls.forEach((cardEl) => {
+        cardEl.dataset.answered = 'false';
+        cardEl.querySelectorAll('.match-btn').forEach(b => { b.disabled = false; });
+        const fb = cardEl.querySelector('.match-feedback');
+        fb.hidden = true;
+        fb.classList.remove('is-correct', 'is-incorrect');
+        fb.textContent = '';
+      });
+      fazitEl.hidden = true;
+    });
+
+    // Falls beim Wiederrendern bereits alles beantwortet ist, Fazit direkt zeigen
+    checkAllAnswered(cardEls, fazitEl);
+
+    return wrap;
+  }
+
+  function applyMatchAnswer(cardEl, card, chosen) {
+    cardEl.dataset.answered = 'true';
+    cardEl.querySelectorAll('.match-btn').forEach(b => { b.disabled = true; });
+
+    const fb = cardEl.querySelector('.match-feedback');
+    const isCorrect = (chosen === card.correctChoice);
+    const text = (chosen === 'korrekt')
+      ? card.feedbackKorrektClick
+      : card.feedbackFehlerhaftClick;
+
+    fb.classList.remove('is-correct', 'is-incorrect');
+    fb.classList.add(isCorrect ? 'is-correct' : 'is-incorrect');
+    fb.textContent = text;
+    fb.hidden = false;
+  }
+
+  function checkAllAnswered(cardEls, fazitEl) {
+    const allAnswered = cardEls.every(el => el.dataset.answered === 'true');
+    fazitEl.hidden = !allAnswered;
+  }
+
+  // Hotspot-Klicks (Pointer Events decken Maus + Touch + Pen ab)
+  stage.addEventListener('click', (e) => {
+    const btn = e.target.closest('.hotspot');
+    if (!btn) return;
+    e.preventDefault();
+    openPanel(btn.dataset.id);
+  });
+
+  // Schließen
+  closeBtn.addEventListener('click', closePanel);
+
+  overlay.addEventListener('click', (e) => {
+    if (e.target === overlay) closePanel();
+  });
+
+  document.addEventListener('keydown', (e) => {
+    if (e.key === 'Escape' && currentId !== null) closePanel();
+  });
+})();
+</script>
+
+</body>
+</html>
